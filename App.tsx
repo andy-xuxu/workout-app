@@ -10,37 +10,44 @@ const App: React.FC = () => {
     ? WORKOUT_LIBRARY 
     : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
 
-  const getCategoryColor = (category: Category) => {
+  const getCategoryStyles = (category: Category) => {
     switch (category) {
-      case 'Chest + Arms': return 'from-blue-500 to-cyan-400';
-      case 'Legs': return 'from-emerald-500 to-green-400';
-      case 'Back + Shoulders': return 'from-purple-600 to-pink-500';
-      default: return 'from-gray-600 to-gray-400';
+      case 'Chest + Arms': 
+        return { 
+          gradient: 'from-blue-500 to-cyan-400',
+          border: 'border-blue-500/20', 
+          text: 'text-blue-400', 
+          bg: 'bg-blue-500/10' 
+        };
+      case 'Legs': 
+        return { 
+          gradient: 'from-emerald-500 to-green-400',
+          border: 'border-emerald-500/20', 
+          text: 'text-emerald-400', 
+          bg: 'bg-emerald-500/10' 
+        };
+      case 'Back + Shoulders': 
+        return { 
+          gradient: 'from-purple-600 to-pink-500',
+          border: 'border-purple-500/20', 
+          text: 'text-purple-400', 
+          bg: 'bg-purple-500/10' 
+        };
+      default: 
+        return { 
+          gradient: 'from-gray-600 to-gray-400',
+          border: 'border-gray-800', 
+          text: 'text-gray-400', 
+          bg: 'bg-gray-800/10' 
+        };
     }
-  };
-
-  const getCategoryTheme = (category: Category) => {
-    switch (category) {
-      case 'Chest + Arms': return { border: 'border-blue-500/20', text: 'text-blue-400', bg: 'bg-blue-500/10' };
-      case 'Legs': return { border: 'border-emerald-500/20', text: 'text-emerald-400', bg: 'bg-emerald-500/10' };
-      case 'Back + Shoulders': return { border: 'border-purple-500/20', text: 'text-purple-400', bg: 'bg-purple-500/10' };
-      default: return { border: 'border-gray-800', text: 'text-gray-400', bg: 'bg-gray-800/10' };
-    }
-  };
-
-  const handleWorkoutClick = (workout: Workout) => {
-    setSelectedWorkout(workout);
-  };
-
-  const closeModal = () => {
-    setSelectedWorkout(null);
   };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
       <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
         <div>
-          <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${getCategoryColor(selectedCategory)} bg-clip-text text-transparent inline-block transition-all duration-500`}>
+          <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${getCategoryStyles(selectedCategory).gradient} bg-clip-text text-transparent inline-block transition-all duration-500`}>
             PulseFit Pro
           </h1>
           <p className="text-gray-400 mt-1 text-base md:text-lg">Personal Technique Vault.</p>
@@ -70,16 +77,15 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredWorkouts.map((workout) => {
-          const theme = getCategoryTheme(workout.category);
-          const hasGif = !!workout.gifUrl;
+          const styles = getCategoryStyles(workout.category);
 
           return (
             <div 
               key={workout.id}
-              className={`group relative bg-[#111111] border ${theme.border} rounded-[2rem] overflow-hidden transition-all flex flex-col active:scale-[0.98] shadow-sm hover:shadow-2xl hover:shadow-black/60`}
+              className={`group relative bg-[#111111] border ${styles.border} rounded-[2rem] overflow-hidden transition-all flex flex-col active:scale-[0.98] shadow-sm hover:shadow-2xl hover:shadow-black/60`}
             >
               <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
-                {hasGif ? (
+                {workout.gifUrl ? (
                   <img 
                     src={workout.gifUrl} 
                     alt={workout.name}
@@ -96,7 +102,7 @@ const App: React.FC = () => {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                 <div className="absolute top-4 left-4 flex gap-2">
-                   <span className={`px-3 py-1.5 ${theme.bg} ${theme.text} text-[10px] font-black rounded-xl uppercase tracking-widest border ${theme.border} backdrop-blur-md`}>
+                   <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest border ${styles.border} backdrop-blur-md`}>
                     {workout.tag}
                   </span>
                 </div>
@@ -108,8 +114,8 @@ const App: React.FC = () => {
                 
                 <div className="mt-auto">
                   <button 
-                    onClick={() => handleWorkoutClick(workout)}
-                    className={`w-full py-4 bg-gradient-to-br ${getCategoryColor(workout.category)} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest`}
+                    onClick={() => setSelectedWorkout(workout)}
+                    className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest`}
                   >
                     View
                   </button>
@@ -124,7 +130,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all animate-in fade-in duration-300 p-0 md:p-6">
           <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
             <button 
-              onClick={closeModal} 
+              onClick={() => setSelectedWorkout(null)} 
               className="absolute top-6 right-6 z-20 p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -134,7 +140,7 @@ const App: React.FC = () => {
 
             <div className="flex flex-col lg:flex-row overflow-y-auto">
               <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-4 md:p-12 min-h-[400px] lg:min-h-[600px]">
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${getCategoryColor(selectedWorkout.category)}`}></div>
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${getCategoryStyles(selectedWorkout.category).gradient}`}></div>
                 
                 <div className="relative w-full h-full flex items-center justify-center">
                   {selectedWorkout.gifUrl ? (
@@ -154,8 +160,8 @@ const App: React.FC = () => {
               <div className="lg:w-2/5 p-8 md:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
                 <div className="mb-12">
                   <div className="flex items-center gap-4 mb-6">
-                     <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${getCategoryColor(selectedWorkout.category)} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
-                     <span className={`text-xs font-black ${getCategoryTheme(selectedWorkout.category).text} uppercase tracking-[0.3em]`}>
+                     <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${getCategoryStyles(selectedWorkout.category).gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
+                     <span className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em]`}>
                        {selectedWorkout.category} / {selectedWorkout.tag}
                      </span>
                   </div>
@@ -164,7 +170,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="mb-12">
-                  <h4 className={`text-xs font-black ${getCategoryTheme(selectedWorkout.category).text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
+                  <h4 className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
                     TARGET MUSCLES
                   </h4>
                   <div className="flex flex-wrap gap-3">

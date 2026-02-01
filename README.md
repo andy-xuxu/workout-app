@@ -1,61 +1,16 @@
 # PulseFit Pro - Workout App
 
-A modern workout tracking Progressive Web App built with React, TypeScript, and Vite.
+A modern workout technique vault Progressive Web App built with React, TypeScript, and Vite. Browse exercise techniques, view demonstrations, and track your workout library.
 
-## 🚀 Deployment to GitHub Pages
+## ✨ Features
 
-This app is configured to deploy automatically to GitHub Pages. Follow these steps:
+- **Exercise Library**: Browse workouts organized by category (Chest + Arms, Legs, Back + Shoulders)
+- **Technique Demos**: View GIF demonstrations for each exercise
+- **Mobile Optimized**: Responsive design that works seamlessly on all devices
+- **Progressive Web App**: Installable on mobile devices with offline support
+- **Modern UI**: Dark theme with smooth animations and transitions
 
-### Initial Setup
-
-1. **Create a GitHub repository** (if you haven't already):
-   - Go to [GitHub](https://github.com) and create a new repository
-   - Name it `workout-app` (or update the `base` path in `vite.config.ts` if you use a different name)
-   - Push your code to the repository
-
-2. **Enable GitHub Pages**:
-   - Go to your repository on GitHub
-   - Click **Settings** → **Pages**
-   - Under **Source**, select **GitHub Actions**
-   - Save the settings
-
-3. **Set up Environment Variables** (if your app uses API keys):
-   - Go to **Settings** → **Secrets and variables** → **Actions**
-   - Click **New repository secret**
-   - Add `GEMINI_API_KEY` (or any other API keys your app needs)
-
-### Automatic Deployment
-
-Once set up, the app will automatically deploy to GitHub Pages whenever you push to the `main` branch.
-
-Your app will be available at:
-```
-https://[your-username].github.io/workout-app/
-```
-
-### Manual Deployment (Alternative)
-
-If you prefer manual deployment, you can use:
-
-```bash
-npm run deploy
-```
-
-This will build the app and deploy it using `gh-pages`.
-
-## 📱 Viewing on Your Phone
-
-1. **Via Browser**:
-   - Open your phone's browser
-   - Navigate to: `https://[your-username].github.io/workout-app/`
-   - The app is mobile-optimized and works as a PWA
-
-2. **Add to Home Screen** (iOS/Android):
-   - On iOS: Tap the Share button → Add to Home Screen
-   - On Android: Tap the menu → Add to Home Screen
-   - The app will work offline after the first visit (thanks to the service worker)
-
-## 🛠️ Local Development
+## 🚀 Quick Start
 
 ```bash
 # Install dependencies
@@ -71,8 +26,70 @@ npm run build
 npm run preview
 ```
 
-## 📝 Notes
+The app will be available at `http://localhost:3000`
 
-- The app is configured with base path `/workout-app/` for GitHub Pages
-- Service worker is automatically registered for offline functionality
-- The app is optimized for mobile devices with touch-friendly UI
+## 📱 Deployment to GitHub Pages
+
+### Initial Setup
+
+1. **Create a GitHub repository**:
+   - Create a new repository named `workout-app` (or update the `base` path in `vite.config.ts` if using a different name)
+   - Push your code to the repository
+
+2. **Enable GitHub Pages**:
+   - Go to your repository → **Settings** → **Pages**
+   - Under **Source**, select **GitHub Actions**
+   - Save the settings
+
+### Automatic Deployment
+
+The app automatically deploys to GitHub Pages when you push to the `main` branch.
+
+Your app will be available at:
+```
+https://[your-username].github.io/workout-app/
+```
+
+### Manual Deployment
+
+Alternatively, deploy manually using:
+
+```bash
+npm run deploy
+```
+
+## 📱 Mobile Access
+
+1. **Via Browser**:
+   - Open your phone's browser
+   - Navigate to: `https://[your-username].github.io/workout-app/`
+   - The app is mobile-optimized and works as a PWA
+
+2. **Add to Home Screen**:
+   - **iOS**: Tap Share → Add to Home Screen
+   - **Android**: Tap Menu → Add to Home Screen
+   - The app works offline after the first visit (thanks to service worker caching)
+
+## 🛠️ Tech Stack
+
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling (via CDN)
+- **Service Worker** - Offline functionality
+
+## 📝 Project Structure
+
+- `App.tsx` - Main application component
+- `constants.ts` - Workout library data
+- `types.ts` - TypeScript type definitions
+- `vite.config.ts` - Vite configuration
+- `sw.js` - Service worker for offline support
+- `manifest.json` - PWA manifest
+
+## 🎨 Customization
+
+- Update workout data in `constants.ts`
+- Modify styling in `App.tsx` (uses Tailwind CSS classes)
+- Adjust PWA settings in `manifest.json`
+- Configure build settings in `vite.config.ts`
