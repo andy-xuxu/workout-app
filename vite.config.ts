@@ -13,11 +13,12 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [
         react(),
-        // Copy sw.js to dist folder
+        // Copy sw.js and manifest.json to dist folder
         {
-          name: 'copy-sw',
+          name: 'copy-assets',
           closeBundle() {
             copyFileSync('sw.js', 'dist/sw.js');
+            copyFileSync('manifest.json', 'dist/manifest.json');
           }
         }
       ],
