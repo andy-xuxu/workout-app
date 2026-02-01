@@ -7,7 +7,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'DB Incline Press',
     category: 'Chest + Arms',
     tag: 'Chest',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/dumbbell-incline-bench-press.jpg', 
     description: 'Upper-chest focused press. Focus on a controlled descent and strong contraction at the top.',
     targetMuscles: ['Upper Chest', 'Triceps', 'Front Delts'],
     intensity: 'High'
@@ -17,7 +17,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Flat Press',
     category: 'Chest + Arms',
     tag: 'Chest',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/cable-seated-chest-press.jpg', 
     description: 'Constant tension chest press using cables. Great for maintaining muscle engagement.',
     targetMuscles: ['Chest', 'Triceps'],
     intensity: 'Medium'
@@ -27,17 +27,17 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Overhead Extensions',
     category: 'Chest + Arms',
     tag: 'triceps',
-    gifUrl: '', 
+    gifUrl: 'https://www.burnthefatinnercircle.com/members/images/2349.jpg', 
     description: 'Long-head tricep isolation. Keep elbows tucked and focus on the stretch at the bottom.',
     targetMuscles: ['Triceps'],
     intensity: 'Medium'
   },
   {
     id: 'ca-4',
-    name: 'BB Seated Curls',
+    name: 'DB Seated Curls',
     category: 'Chest + Arms',
     tag: 'Arms',
-    gifUrl: '', 
+    gifUrl: 'https://images.squarespace-cdn.com/content/v1/5ffcea9416aee143500ea103/1638178095392-8E8Q4NQ9OD3J2AMLXOSY/Seated%2BIncline%2BDumbbell%2BBiceps%2BCurl.jpeg', 
     description: 'Strict bicep curls performed seated to eliminate body sway and maximize peak tension.',
     targetMuscles: ['Biceps'],
     intensity: 'Medium'
@@ -47,7 +47,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'DB Hammer Curls',
     category: 'Chest + Arms',
     tag: 'Arms',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/dumbbell-seated-hammer-curl.jpg', 
     description: 'Neutral grip curls targeting the brachialis and forearms for overall arm thickness.',
     targetMuscles: ['Biceps', 'Brachialis', 'Forearms'],
     intensity: 'Medium'

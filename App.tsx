@@ -1,25 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category } from './types';
-import { GifDatabase } from './services/db';
 
 const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
-  const [localGifs, setLocalGifs] = useState<Record<string, string>>({});
-
-  // Load all GIFs from IndexedDB on startup
-  useEffect(() => {
-    const loadGifs = async () => {
-      try {
-        const allGifs = await GifDatabase.getAllGifs();
-        setLocalGifs(allGifs);
-      } catch (e) {
-        console.error("Failed to load IndexedDB data", e);
-      }
-    };
-    loadGifs();
-  }, []);
 
   const filteredWorkouts = selectedCategory === 'All' 
     ? WORKOUT_LIBRARY 
@@ -86,17 +71,17 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredWorkouts.map((workout) => {
           const theme = getCategoryTheme(workout.category);
-          const hasLocal = !!localGifs[workout.id];
-          
+          const hasGif = !!workout.gifUrl;
+
           return (
             <div 
               key={workout.id}
               className={`group relative bg-[#111111] border ${theme.border} rounded-[2rem] overflow-hidden transition-all flex flex-col active:scale-[0.98] shadow-sm hover:shadow-2xl hover:shadow-black/60`}
             >
               <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
-                {hasLocal ? (
+                {hasGif ? (
                   <img 
-                    src={localGifs[workout.id]} 
+                    src={workout.gifUrl} 
                     alt={workout.name}
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                     loading="lazy"
@@ -114,11 +99,6 @@ const App: React.FC = () => {
                    <span className={`px-3 py-1.5 ${theme.bg} ${theme.text} text-[10px] font-black rounded-xl uppercase tracking-widest border ${theme.border} backdrop-blur-md`}>
                     {workout.tag}
                   </span>
-                  {hasLocal && (
-                    <span className="px-3 py-1.5 bg-blue-500/20 text-blue-400 text-[10px] font-black rounded-xl uppercase tracking-widest border border-blue-500/20 backdrop-blur-md">
-                      SAVED CLIP
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -157,9 +137,9 @@ const App: React.FC = () => {
                 <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${getCategoryColor(selectedWorkout.category)}`}></div>
                 
                 <div className="relative w-full h-full flex items-center justify-center">
-                  {localGifs[selectedWorkout.id] || selectedWorkout.gifUrl ? (
+                  {selectedWorkout.gifUrl ? (
                     <img 
-                      src={localGifs[selectedWorkout.id] || selectedWorkout.gifUrl} 
+                      src={selectedWorkout.gifUrl} 
                       alt={selectedWorkout.name}
                       className="max-w-full max-h-[500px] lg:max-h-[700px] object-contain rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
                     />

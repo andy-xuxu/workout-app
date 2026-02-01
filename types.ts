@@ -11,7 +11,3 @@ export interface Workout {
   targetMuscles: string[];
   intensity: 'Low' | 'Medium' | 'High';
 }
-
-export interface AppState {
-  localGifs: Record<string, string>; // workoutId -> dataUrl (user's custom uploads)
-}

@@ -7,7 +7,6 @@ const PRECACHE_ASSETS = [
   './App.tsx',
   './constants.ts',
   './types.ts',
-  './services/db.ts'
 ];
 
 // Install event: cache core assets
