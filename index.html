@@ -56,14 +56,15 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+          // Use base path for GitHub Pages
+          const basePath = '/workout-app/';
+          navigator.serviceWorker.register(basePath + 'sw.js').catch(err => console.log('SW registration failed:', err));
         });
       }
     </script>

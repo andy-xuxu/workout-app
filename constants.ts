@@ -7,7 +7,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'DB Incline Press',
     category: 'Chest + Arms',
     tag: 'Chest',
-    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/dumbbell-incline-bench-press.jpg', 
+    gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif', 
     description: 'Upper-chest focused press. Focus on a controlled descent and strong contraction at the top.',
     targetMuscles: ['Upper Chest', 'Triceps', 'Front Delts'],
     intensity: 'High'
@@ -59,7 +59,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'BB Back Squats',
     category: 'Legs',
     tag: 'legs',
-    gifUrl: '', 
+    gifUrl: 'https://experiencelife.lifetime.life/wp-content/uploads/2021/08/f2-barbell-back-squat-1024x577.jpg', 
     description: 'Compound movement for total lower body power. Maintain a neutral spine throughout.',
     targetMuscles: ['Quads', 'Glutes', 'Hamstrings', 'Core'],
     intensity: 'High'
@@ -69,7 +69,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Bulgarian Split Squats',
     category: 'Legs',
     tag: 'legs',
-    gifUrl: '', 
+    gifUrl: 'https://modusx.de/wp-content/uploads/bulgarian-split-squats-ohne-zusatzgewicht.jpg', 
     description: 'Unilateral leg dominant movement. Elevate the rear foot and stay upright to target quads.',
     targetMuscles: ['Quads', 'Glutes'],
     intensity: 'High'
@@ -79,7 +79,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'DB RDLs',
     category: 'Legs',
     tag: 'legs',
-    gifUrl: '', 
+    gifUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3DYeHUkoSp38PrFL8-IyjvWNUJCQ_O_1eew&s', 
     description: 'Posterior chain focused movement. Hinge at the hips and feel the stretch in your hamstrings.',
     targetMuscles: ['Hamstrings', 'Glutes', 'Lower Back'],
     intensity: 'High'
@@ -89,7 +89,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Seated Calf Raises',
     category: 'Legs',
     tag: 'legs',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/weighted-seated-calf-raise.jpg', 
     description: 'Soleus isolation. Perform with a slow tempo and a full pause at the bottom stretch.',
     targetMuscles: ['Calves'],
     intensity: 'Medium'
@@ -101,7 +101,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Lateral Pulldowns',
     category: 'Back + Shoulders',
     tag: 'back',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/cable-wide-grip-lat-pulldown.jpg', 
     description: 'Width builder for the lats. Pull to the upper chest while keeping shoulders depressed.',
     targetMuscles: ['Lats', 'Middle Back', 'Biceps'],
     intensity: 'High'
@@ -111,7 +111,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Chest-Supported Rows',
     category: 'Back + Shoulders',
     tag: 'back',
-    gifUrl: '', 
+    gifUrl: 'https://cdn.shopify.com/s/files/1/0449/8453/3153/files/chest_supported_row_muscles_worked_600x600.png?v=1716192902', 
     description: 'Mid-back thickness focus. Supporting the chest prevents momentum and lower back fatigue.',
     targetMuscles: ['Upper Back', 'Lats', 'Rear Delts'],
     intensity: 'High'
@@ -121,7 +121,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Rear-delt Flys',
     category: 'Back + Shoulders',
     tag: 'back',
-    gifUrl: '', 
+    gifUrl: 'https://anabolicaliens.com/cdn/shop/articles/5e628d3bea2ff808d2e7abcd_standing-cable-rear-delt-fly-exercise-anabolic-aliens-p-500.png?v=1644926615', 
     description: 'Isolation for the rear deltoids. Maintain a slight bend in the elbows and squeeze at the back.',
     targetMuscles: ['Rear Delts', 'Traps'],
     intensity: 'Medium'
@@ -131,7 +131,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'DB Overhead Press',
     category: 'Back + Shoulders',
     tag: 'shoulders',
-    gifUrl: '', 
+    gifUrl: 'https://liftmanual.com/wp-content/uploads/2023/04/dumbbell-seated-shoulder-press.jpg', 
     description: 'Vertical push for shoulder strength. Control the weights and avoid excessive arching.',
     targetMuscles: ['Shoulders', 'Triceps'],
     intensity: 'High'
@@ -141,7 +141,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Lateral Raises',
     category: 'Back + Shoulders',
     tag: 'shoulders',
-    gifUrl: '', 
+    gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/09/Leaning-Cable-Lateral-Raise.gif', 
     description: 'Medial delt isolation. The cable provides constant tension which is superior for growth.',
     targetMuscles: ['Side Delts'],
     intensity: 'Medium'
