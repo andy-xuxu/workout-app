@@ -16,29 +16,29 @@ const App: React.FC = () => {
         return { 
           gradient: 'from-blue-500 to-cyan-400',
           border: 'border-blue-500/20', 
-          text: 'text-blue-400', 
-          bg: 'bg-blue-500/10' 
+          text: 'text-white', 
+          bg: 'bg-blue-600' 
         };
       case 'Legs': 
         return { 
           gradient: 'from-emerald-500 to-green-400',
           border: 'border-emerald-500/20', 
-          text: 'text-emerald-400', 
-          bg: 'bg-emerald-500/10' 
+          text: 'text-white', 
+          bg: 'bg-emerald-600' 
         };
       case 'Back + Shoulders': 
         return { 
           gradient: 'from-purple-600 to-pink-500',
           border: 'border-purple-500/20', 
-          text: 'text-purple-400', 
-          bg: 'bg-purple-500/10' 
+          text: 'text-white', 
+          bg: 'bg-purple-600' 
         };
       default: 
         return { 
           gradient: 'from-gray-600 to-gray-400',
           border: 'border-gray-800', 
-          text: 'text-gray-400', 
-          bg: 'bg-gray-800/10' 
+          text: 'text-white', 
+          bg: 'bg-gray-700' 
         };
     }
   };
@@ -102,7 +102,7 @@ const App: React.FC = () => {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                 <div className="absolute top-4 left-4 flex gap-2">
-                   <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest border ${styles.border} backdrop-blur-md`}>
+                   <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg`}>
                     {workout.tag}
                   </span>
                 </div>
