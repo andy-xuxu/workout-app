@@ -13,13 +13,12 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [
         react(),
-        // Copy sw.js, 404.html, and .nojekyll to dist folder
+        // Copy sw.js and 404.html to dist folder
         {
           name: 'copy-assets',
           closeBundle() {
             copyFileSync('sw.js', 'dist/sw.js');
             copyFileSync('404.html', 'dist/404.html');
-            copyFileSync('.nojekyll', 'dist/.nojekyll');
           }
         }
       ],

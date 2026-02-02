@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category, SavedWorkout } from './types';
 
@@ -51,6 +51,47 @@ const updateSavedWorkout = (workoutId: string, updates: Partial<SavedWorkout>): 
   }
 };
 
+// Helper functions
+const getIntensityBadgeClass = (intensity: 'Low' | 'Medium' | 'High'): string => {
+  switch (intensity) {
+    case 'Low':
+      return 'bg-green-600 text-white';
+    case 'Medium':
+      return 'bg-yellow-600 text-white';
+    case 'High':
+      return 'bg-red-600 text-white';
+  }
+};
+
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
+};
+
+// Empty GIF placeholder component
+const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 'small' }) => {
+  const iconSize = size === 'large' ? 'w-12 h-12' : 'w-8 h-8';
+  const textSize = size === 'large' ? 'text-sm' : 'text-[9px]';
+  
+  return (
+    <div className={`w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2`}>
+      <svg className={`${iconSize} opacity-20`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <span className={`${textSize} font-black uppercase tracking-widest text-center px-4`}>
+        {size === 'large' ? 'Technique Clip Awaiting' : 'Technique Coming Soon'}
+      </span>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('landing');
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
@@ -66,15 +107,21 @@ const App: React.FC = () => {
   const isCreateMode = appMode === 'create';
 
   // Get unique tags from workout library
-  const availableTags = Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort();
+  const availableTags = useMemo(
+    () => Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort(),
+    []
+  );
 
-  const filteredWorkouts = isCreateMode
-    ? selectedTag
-      ? WORKOUT_LIBRARY.filter(w => w.tag.toLowerCase() === selectedTag.toLowerCase())
-      : WORKOUT_LIBRARY
-    : selectedCategory === 'All' 
-      ? WORKOUT_LIBRARY 
+  const filteredWorkouts = useMemo(() => {
+    if (isCreateMode) {
+      return selectedTag
+        ? WORKOUT_LIBRARY.filter(w => w.tag.toLowerCase() === selectedTag.toLowerCase())
+        : WORKOUT_LIBRARY;
+    }
+    return selectedCategory === 'All'
+      ? WORKOUT_LIBRARY
       : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
+  }, [isCreateMode, selectedTag, selectedCategory]);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
@@ -111,22 +158,11 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutToggle = (workout: Workout) => {
-    if (customWorkouts.some(w => w.id === workout.id)) {
-      setCustomWorkouts(customWorkouts.filter(w => w.id !== workout.id));
-    } else {
-      setCustomWorkouts([...customWorkouts, workout]);
-    }
-  };
-
-  const handleCreateModeToggle = () => {
-    if (isCreateMode) {
-      setCustomWorkouts([]);
-      setEditingWorkoutId(null);
-      setAppMode('view');
-    } else {
-      setAppMode('create');
-      setEditingWorkoutId(null);
-    }
+    setCustomWorkouts(prev =>
+      prev.some(w => w.id === workout.id)
+        ? prev.filter(w => w.id !== workout.id)
+        : [...prev, workout]
+    );
   };
 
   const handleViewWorkouts = () => {
@@ -154,6 +190,12 @@ const App: React.FC = () => {
     setEditingWorkoutId(null);
   };
 
+  const closeSaveModal = () => {
+    setShowSaveModal(false);
+    setWorkoutNameInput('');
+    setEditingWorkoutId(null);
+  };
+
   const handleSaveWorkout = () => {
     if (customWorkouts.length === 0) return;
     setShowSaveModal(true);
@@ -168,8 +210,7 @@ const App: React.FC = () => {
 
   const handleSaveWorkoutConfirm = () => {
     const name = workoutNameInput.trim();
-    if (!name || name.length === 0) return;
-    if (name.length > 50) return;
+    if (!name || name.length === 0 || name.length > 50) return;
 
     if (editingWorkoutId) {
       // Update existing workout
@@ -177,9 +218,6 @@ const App: React.FC = () => {
         name,
         workouts: [...customWorkouts]
       });
-      setSavedWorkouts(loadSavedWorkouts());
-      setShowSaveModal(false);
-      setWorkoutNameInput('');
       // Keep editingWorkoutId set so subsequent saves continue to update the same workout
     } else {
       // Create new workout
@@ -190,10 +228,9 @@ const App: React.FC = () => {
         createdAt: Date.now()
       };
       saveWorkoutToStorage(newWorkout);
-      setSavedWorkouts(loadSavedWorkouts());
-      setShowSaveModal(false);
-      setWorkoutNameInput('');
     }
+    setSavedWorkouts(loadSavedWorkouts());
+    closeSaveModal();
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -234,18 +271,6 @@ const App: React.FC = () => {
   useEffect(() => {
     setSavedWorkouts(loadSavedWorkouts());
   }, []);
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-  };
 
   if (appMode === 'landing') {
     return (
@@ -426,23 +451,14 @@ const App: React.FC = () => {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
-                        <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
-                      </div>
+                      <EmptyGifPlaceholder />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                     <div className="absolute top-4 left-4 flex gap-2">
                        <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                         {workout.tag}
                       </span>
-                      <span className={`px-3 py-1.5 ${
-                        workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                        workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                        'bg-red-600 text-white'
-                      } text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                      <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
                         {workout.intensity}
                       </span>
                     </div>
@@ -495,7 +511,7 @@ const App: React.FC = () => {
                       />
                     ) : (
                       <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                        <p className="text-gray-500 font-black text-sm uppercase tracking-widest">Technique Clip Awaiting</p>
+                        <EmptyGifPlaceholder size="large" />
                       </div>
                     )}
                   </div>
@@ -614,11 +630,7 @@ const App: React.FC = () => {
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-800">
-                              <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
+                            <EmptyGifPlaceholder />
                           )}
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
@@ -626,11 +638,7 @@ const App: React.FC = () => {
                             <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                               {workout.tag}
                             </span>
-                            <span className={`px-3 py-1 ${
-                              workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                              workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                              'bg-red-600 text-white'
-                            } text-[10px] font-black rounded-lg uppercase tracking-widest`}>
+                            <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest`}>
                               {workout.intensity}
                             </span>
                           </div>
@@ -684,15 +692,13 @@ const App: React.FC = () => {
           </>
         )}
 
-        {isCreateMode && customWorkouts.length === 0 && (
-          <div className="mb-8 p-6 bg-[#111111] border border-gray-800 rounded-2xl flex items-center justify-center text-center">
-            <p className="text-gray-400 text-lg mb-2 mx-auto">Tap workouts below to add them to your custom routine</p>
-          </div>
-        )}
-
-        {isCreateMode && customWorkouts.length > 0 && (
+        {isCreateMode && (
           <div className="mb-8 p-4 bg-[#111111] border border-gray-800 rounded-2xl">
-            <p className="text-gray-400 text-sm text-center">Continue selecting workouts below to add more to your custom routine</p>
+            <p className="text-gray-400 text-sm text-center">
+              {customWorkouts.length === 0 
+                ? 'Tap workouts below to add them to your custom routine'
+                : 'Continue selecting workouts below to add more to your custom routine'}
+            </p>
           </div>
         )}
 
@@ -722,24 +728,15 @@ const App: React.FC = () => {
                       className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                       loading="lazy"
                     />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
-                      <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyGifPlaceholder />
+                    )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                   <div className="absolute top-4 left-4 flex gap-2">
                      <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                       {workout.tag}
                     </span>
-                    <span className={`px-3 py-1.5 ${
-                      workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                      workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                      'bg-red-600 text-white'
-                    } text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                    <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
                       {workout.intensity}
                     </span>
                   </div>
@@ -777,11 +774,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4">
           <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
             <button 
-              onClick={() => {
-                setShowSaveModal(false);
-                setWorkoutNameInput('');
-                setEditingWorkoutId(null);
-              }}
+              onClick={closeSaveModal}
               className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -809,17 +802,13 @@ const App: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveWorkoutConfirm}
-                  disabled={!workoutNameInput.trim() || workoutNameInput.trim().length === 0}
+                  disabled={!workoutNameInput.trim()}
                   className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
                 >
                   {editingWorkoutId ? 'Update' : 'Save'}
                 </button>
                 <button
-                  onClick={() => {
-                    setShowSaveModal(false);
-                    setWorkoutNameInput('');
-                    setEditingWorkoutId(null);
-                  }}
+                  onClick={closeSaveModal}
                   className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
                 >
                   Cancel
@@ -855,7 +844,7 @@ const App: React.FC = () => {
                     />
                   ) : (
                     <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                      <p className="text-gray-500 font-black text-sm uppercase tracking-widest">Technique Clip Awaiting</p>
+                      <EmptyGifPlaceholder size="large" />
                     </div>
                   )}
                 </div>
