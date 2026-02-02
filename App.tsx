@@ -1407,10 +1407,10 @@ const App: React.FC = () => {
   const closeDrawer = () => setIsDrawerOpen(false);
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
-  // Handler to open workout detail modal and close drawer
+  // Handler to open workout detail modal and keep drawer open (hidden behind modal)
   const handleOpenWorkoutDetail = (workout: Workout) => {
     setWasDrawerOpenBeforeModal(true);
-    closeDrawer();
+    // Don't close drawer - keep it open but it will be hidden behind modal (z-index)
     setSelectedWorkout(workout);
   };
 
@@ -1420,15 +1420,11 @@ const App: React.FC = () => {
     setSelectedWorkout(workout);
   };
 
-  // Handler to close workout detail modal and reopen drawer if it was open
+  // Handler to close workout detail modal - drawer stays open (no animation needed)
   const handleCloseWorkoutDetail = () => {
     setSelectedWorkout(null);
-    if (wasDrawerOpenBeforeModal && isCreateMode) {
-      setWasDrawerOpenBeforeModal(false);
-      openDrawer();
-    } else {
-      setWasDrawerOpenBeforeModal(false);
-    }
+    setWasDrawerOpenBeforeModal(false);
+    // Drawer is already open, no need to call openDrawer() - it will just be visible again
   };
 
 
