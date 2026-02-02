@@ -756,7 +756,7 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150,
+        delay: 200,
         tolerance: 8,
       },
     }),
@@ -831,7 +831,9 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
         {/* Content */}
         <div 
           className="flex-1 overflow-y-auto p-6"
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          style={{ 
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           {workouts.length === 0 ? (
             <div className="text-center py-16">
@@ -916,25 +918,12 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
     onClick(workout);
   };
 
-  // Create listeners that exclude the remove button
-  const dragListeners = {
-    ...listeners,
-    onPointerDown: (e: React.PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('button[aria-label*="Remove"]')) {
-        e.preventDefault();
-        return;
-      }
-      listeners?.onPointerDown?.(e);
-    },
-  };
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...dragListeners}
+      {...listeners}
       onClick={handleClick}
       className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none ${
         isDragging 
@@ -951,9 +940,12 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
         onPointerDown={(e) => {
           e.stopPropagation();
         }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
         className="absolute top-3 right-3 md:top-4 md:right-4 z-20 p-2 md:p-2 bg-red-600/80 hover:bg-red-600 active:bg-red-700 rounded-lg text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label={`Remove ${workout.name}`}
-        style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}
+        style={{ touchAction: 'manipulation', pointerEvents: 'auto', zIndex: 30 }}
       >
         <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
