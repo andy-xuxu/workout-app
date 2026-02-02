@@ -111,7 +111,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Chest-Supported Rows',
     category: 'Back + Shoulders',
     tag: 'back',
-    gifUrl: 'https://cdn.shopify.com/s/files/1/0449/8453/3153/files/chest_supported_row_muscles_worked_600x600.png?v=1716192902', 
+    gifUrl: 'https://media.tenor.com/dRQP9z6o7VMAAAAM/remada-inclinada-a-45-graus.gif', 
     description: 'Mid-back thickness focus. Supporting the chest prevents momentum and lower back fatigue.',
     targetMuscles: ['Upper Back', 'Lats', 'Rear Delts'],
     intensity: 'High'
