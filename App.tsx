@@ -325,7 +325,7 @@ const Header: React.FC<HeaderProps> = ({ onBack, subtitle }) => {
       </div>
       <button
         onClick={onBack}
-        className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+        className="px-5 py-3 md:px-6 md:py-3 text-gray-400 hover:text-white transition-colors text-base md:text-sm font-medium rounded-lg hover:bg-gray-800/50 active:scale-95 min-w-[88px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
       >
         ← Back
       </button>
@@ -725,8 +725,7 @@ interface WorkoutRoutineDrawerProps {
   onClick: (workout: Workout) => void;
   onSave: () => void;
   onClear: () => void;
-  onDragEnd: (event: DragEndEvent) => void;
-  sensors: ReturnType<typeof useSensors>;
+  onReorder: (fromIndex: number, toIndex: number) => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
   getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
   hasWorkoutChanges: boolean;
@@ -742,14 +741,39 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
   onClick,
   onSave,
   onClear,
-  onDragEnd,
-  sensors,
+  onReorder,
   getCategoryStyles,
   getIntensityBadgeClass,
   hasWorkoutChanges,
   editingWorkoutId,
   isMobile,
 }) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = workouts.findIndex((w) => w.id === active.id);
+      const newIndex = workouts.findIndex((w) => w.id === over.id);
+      onReorder(oldIndex, newIndex);
+    }
+  };
   return (
     <>
       {/* Backdrop */}
@@ -805,7 +829,10 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div 
+          className="flex-1 overflow-y-auto p-6"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {workouts.length === 0 ? (
             <div className="text-center py-16">
               <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -815,39 +842,29 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
               <p className="text-gray-500 text-sm">Tap workouts below to add them to your routine</p>
             </div>
           ) : (
-            <>
-              <div className="mb-4 p-3 bg-[#111111] border border-gray-800 rounded-xl">
-                <p className="text-gray-400 text-sm text-center flex items-center justify-center gap-1">
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                  </svg>
-                  <span>Drag any workout card to reorder</span>
-                </p>
-              </div>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={onDragEnd}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={workouts.map((w) => w.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <SortableContext
-                  items={workouts.map(w => w.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-4">
-                    {workouts.map((workout) => (
-                      <SortableWorkoutCard
-                        key={workout.id}
-                        workout={workout}
-                        onRemove={onRemove}
-                        onClick={onClick}
-                        getCategoryStyles={getCategoryStyles}
-                        getIntensityBadgeClass={getIntensityBadgeClass}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </>
+                <div className="space-y-4">
+                  {workouts.map((workout) => (
+                    <WorkoutRoutineCard
+                      key={workout.id}
+                      workout={workout}
+                      onRemove={onRemove}
+                      onClick={onClick}
+                      getCategoryStyles={getCategoryStyles}
+                      getIntensityBadgeClass={getIntensityBadgeClass}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
@@ -855,8 +872,8 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
   );
 };
 
-// Sortable Workout Card Component
-interface SortableWorkoutCardProps {
+// Workout Routine Card Component
+interface WorkoutRoutineCardProps {
   workout: Workout;
   onRemove: (workoutId: string) => void;
   onClick: (workout: Workout) => void;
@@ -864,13 +881,15 @@ interface SortableWorkoutCardProps {
   getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
 }
 
-const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
+const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
   workout,
   onRemove,
   onClick,
   getCategoryStyles,
   getIntensityBadgeClass,
 }) => {
+  const styles = getCategoryStyles(workout.category);
+  
   const {
     attributes,
     listeners,
@@ -880,121 +899,65 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     isDragging,
   } = useSortable({ id: workout.id });
 
-  const styles = getCategoryStyles(workout.category);
-  const [wasDragging, setWasDragging] = useState(false);
-  
-  // Track dragging state to prevent card click
-  useEffect(() => {
-    if (isDragging) {
-      setWasDragging(true);
-    } else if (wasDragging) {
-      // Reset after a short delay to prevent click after drag
-      const timer = setTimeout(() => setWasDragging(false), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isDragging, wasDragging]);
-  
-  // Build transform string properly
-  let transformString: string | undefined = undefined;
-  if (transform) {
-    transformString = CSS.Transform.toString(transform);
-    if (isDragging) {
-      transformString += ' scale(1.05)'; // Slightly reduced scale for mobile
-    }
-  } else if (isDragging) {
-    transformString = 'scale(1.05)';
-  }
-  
-  const style: React.CSSProperties = {
-    transition: isDragging ? 'none' : (transition || 'transform 200ms cubic-bezier(0.2, 0, 0, 1)'),
-    opacity: isDragging ? 0.95 : 1,
-    zIndex: isDragging ? 9999 : 1,
-    userSelect: 'none',
-    WebkitUserSelect: 'none',
-    WebkitTouchCallout: 'none',
-    // iOS Safari touch handling - remove tap highlight
-    WebkitTapHighlightColor: 'transparent',
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
   };
-  
-  // Only set transform when we have a value from @dnd-kit
-  if (transformString) {
-    style.transform = transformString;
-  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent click if clicking on the remove button
+    const target = e.target as HTMLElement;
+    if (target.closest('button[aria-label*="Remove"]')) {
+      return;
+    }
+    onClick(workout);
+  };
 
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={style}
-      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none cursor-grab active:cursor-grabbing ${
+      {...attributes}
+      className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none ${
         isDragging 
-          ? 'shadow-2xl shadow-blue-500/30 border-blue-500/50' 
-          : 'hover:border-gray-700'
+          ? 'cursor-grabbing z-30 scale-95 border-2 border-white/50 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
+          : 'cursor-grab border border-gray-800 hover:border-gray-700'
       }`}
-      onClick={(e) => {
-        // Don't trigger card click if we just finished dragging
-        if (!isDragging && !wasDragging) {
-          onClick(workout);
-        }
-      }}
-      onTouchStart={(e) => {
-        // Allow touch events to propagate for drag handling on iOS
-        // Don't prevent default to allow @dnd-kit to handle drag
-      }}
     >
-      {/* Drag Handle - Visual Indicator */}
-      <div
-        className="absolute top-3 left-3 md:top-4 md:left-4 z-10 p-2 text-gray-400 rounded-lg transition-colors pointer-events-none"
-        aria-label="Drag to reorder"
-      >
-        <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
-      </div>
-
       {/* Remove Button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onRemove(workout.id);
         }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          // Prevent drag when clicking remove button
-          e.stopPropagation();
-        }}
-        className="absolute top-3 right-3 md:top-4 md:right-4 z-20 p-2 md:p-2 bg-red-600/80 hover:bg-red-600 active:bg-red-700 rounded-lg text-white transition-colors touch-none min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="absolute top-3 right-3 md:top-4 md:right-4 z-20 p-2 md:p-2 bg-red-600/80 hover:bg-red-600 active:bg-red-700 rounded-lg text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label={`Remove ${workout.name}`}
+        style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}
       >
         <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
-      <div className="flex-1 flex flex-col justify-center pt-1">
+      <div 
+        {...listeners}
+        onClick={handleClick}
+        className="flex-1 flex flex-col justify-center pt-1 cursor-grab active:cursor-grabbing"
+        style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
+      >
         <WorkoutBadges
           tag={workout.tag}
           intensity={workout.intensity}
           categoryStyles={styles}
           getIntensityBadgeClass={getIntensityBadgeClass}
         />
-        <h3 
-          className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none cursor-grab active:cursor-grabbing"
-          style={{ pointerEvents: 'auto' }}
-        >
+        <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none">
           {workout.name}
         </h3>
-        <p className="text-gray-400 text-sm mb-3 md:mb-4 select-none line-clamp-2 cursor-grab active:cursor-grabbing">{workout.description}</p>
+        <p className="text-gray-400 text-sm mb-3 md:mb-4 select-none line-clamp-2">{workout.description}</p>
         <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
-            <span key={m} className="px-2 md:px-3 py-1 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none cursor-grab active:cursor-grabbing">
+            <span key={m} className="px-2 md:px-3 py-1 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
               {m}
             </span>
           ))}
@@ -1027,28 +990,6 @@ const App: React.FC = () => {
   const closeDrawer = () => setIsDrawerOpen(false);
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
-  // Custom activation constraint for touch that distinguishes scrolling from dragging
-  // Optimized for iOS Safari - delay with small tolerance for better compatibility
-  const touchActivationConstraint = {
-    delay: 300, // Delay before drag activates - prevents accidental drags during scroll
-    tolerance: 8, // Tolerance for movement - allows small movements without canceling drag on iOS
-  };
-
-  // Configure drag-and-drop sensors
-  // TouchSensor first for mobile devices (especially iOS), then PointerSensor for desktop
-  const sensors = useSensors(
-    useSensor(TouchSensor, {
-      activationConstraint: touchActivationConstraint,
-    }),
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Distance to move before drag activates - prevents accidental drags
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   // Get unique tags from workout library
   const availableTags = useMemo(() => {
@@ -1163,16 +1104,16 @@ const App: React.FC = () => {
     setCustomWorkouts(prev => prev.filter(w => w.id !== workoutId));
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setCustomWorkouts(items => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
+  const handleReorderWorkouts = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setCustomWorkouts(prev => {
+      const newWorkouts = [...prev];
+      const [removed] = newWorkouts.splice(fromIndex, 1);
+      newWorkouts.splice(toIndex, 0, removed);
+      return newWorkouts;
+    });
   };
+
 
   const closeSaveModal = () => {
     setShowSaveModal(false);
@@ -1206,17 +1147,17 @@ const App: React.FC = () => {
   const hasWorkoutChanges = useMemo(() => {
     if (!editingWorkoutId || !originalWorkout) return true; // New workout always has "changes"
     
-    // Compare workouts by IDs and order - reordering counts as a change
-    const originalIds = originalWorkout.workouts.map(w => w.id);
-    const currentIds = customWorkouts.map(w => w.id);
+    // Compare workouts by IDs (as sets, ignoring order)
+    const originalIds = new Set(originalWorkout.workouts.map(w => w.id));
+    const currentIds = new Set(customWorkouts.map(w => w.id));
     
-    // Check if length changed
-    if (originalIds.length !== currentIds.length) {
+    // Check if sets match
+    if (originalIds.size !== currentIds.size) {
       return true;
     }
     
-    // Check if order or content changed
-    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
+    // Check if all IDs match
+    const workoutsChanged = Array.from(originalIds).some(id => !currentIds.has(id));
     
     return workoutsChanged;
   }, [editingWorkoutId, originalWorkout, customWorkouts]);
@@ -1228,17 +1169,17 @@ const App: React.FC = () => {
     const currentName = workoutNameInput.trim();
     const nameChanged = currentName !== originalWorkout.name;
     
-    // Compare workouts by IDs and order - reordering counts as a change
-    const originalIds = originalWorkout.workouts.map(w => w.id);
-    const currentIds = customWorkouts.map(w => w.id);
+    // Compare workouts by IDs (as sets, ignoring order)
+    const originalIds = new Set(originalWorkout.workouts.map(w => w.id));
+    const currentIds = new Set(customWorkouts.map(w => w.id));
     
-    // Check if length changed
-    if (originalIds.length !== currentIds.length) {
+    // Check if sets match
+    if (originalIds.size !== currentIds.size) {
       return true;
     }
     
-    // Check if order or content changed
-    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
+    // Check if all IDs match
+    const workoutsChanged = Array.from(originalIds).some(id => !currentIds.has(id));
     
     return nameChanged || workoutsChanged;
   }, [editingWorkoutId, originalWorkout, workoutNameInput, customWorkouts]);
@@ -1463,7 +1404,7 @@ const App: React.FC = () => {
             </button>
             <button
               onClick={() => setAppMode('saved')}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              className="px-5 py-3 md:px-4 md:py-2 text-gray-400 hover:text-white transition-colors text-base md:text-sm font-medium rounded-lg hover:bg-gray-800/50 active:scale-95 min-w-[88px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
             >
               ← Back
             </button>
@@ -1481,6 +1422,7 @@ const App: React.FC = () => {
                 getIntensityBadgeClass={getIntensityBadgeClass}
                 isProminent={isMobile && prominentTileId === workout.id}
                 getTileRef={getTileRef}
+                showViewButton={false}
               />
             ))}
           </div>
@@ -1757,8 +1699,7 @@ const App: React.FC = () => {
           onClick={setSelectedWorkout}
           onSave={handleSaveWorkout}
           onClear={handleClearCustomWorkout}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
+          onReorder={handleReorderWorkouts}
           getCategoryStyles={getCategoryStyles}
           getIntensityBadgeClass={getIntensityBadgeClass}
           hasWorkoutChanges={hasWorkoutChanges}
