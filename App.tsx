@@ -132,116 +132,90 @@ const useIsMobile = (): boolean => {
   return isMobile;
 };
 
-// Prominent tile detection hook
+// Prominent tile detection hook - finds tile closest to viewport center
 const useProminentTile = (
   tileIds: string[],
   isMobile: boolean
 ): { prominentTileId: string | null; getTileRef: (id: string) => (element: HTMLElement | null) => void } => {
   const [prominentTileId, setProminentTileId] = useState<string | null>(null);
   const tileRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const visibleAreasRef = useRef<Map<string, number>>(new Map());
+  const rafRef = useRef<number | null>(null);
 
   const getTileRef = useCallback((id: string) => {
     return (element: HTMLElement | null) => {
       if (element) {
         element.setAttribute('data-tile-id', id);
-        const previousElement = tileRefs.current.get(id);
-        if (previousElement !== element) {
-          // Unobserve previous element if it exists
-          if (previousElement && observerRef.current) {
-            observerRef.current.unobserve(previousElement);
-          }
-          tileRefs.current.set(id, element);
-          // Observe new element if observer exists
-          if (observerRef.current) {
-            observerRef.current.observe(element);
-          }
-        }
+        tileRefs.current.set(id, element);
       } else {
-        const elementToRemove = tileRefs.current.get(id);
-        if (elementToRemove && observerRef.current) {
-          observerRef.current.unobserve(elementToRemove);
-        }
         tileRefs.current.delete(id);
       }
     };
   }, []);
 
-  useEffect(() => {
+  // Calculate which tile is closest to the center of the viewport
+  const findCenterTile = useCallback(() => {
     if (!isMobile || tileIds.length === 0) {
       setProminentTileId(null);
-      visibleAreasRef.current.clear();
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
-      }
       return;
     }
 
-    // Cleanup previous observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
+    const viewportCenterY = window.innerHeight / 2;
+    const tileIdSet = new Set(tileIds);
+    
+    let closestId: string | null = null;
+    let minDistance = Infinity;
+
+    tileRefs.current.forEach((element, id) => {
+      if (!tileIdSet.has(id)) return;
+      
+      const rect = element.getBoundingClientRect();
+      // Calculate the center of the tile
+      const tileCenterY = rect.top + rect.height / 2;
+      // Calculate distance from tile center to viewport center
+      const distance = Math.abs(tileCenterY - viewportCenterY);
+      
+      // Only consider tiles that are at least partially visible
+      const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+      
+      if (isVisible && distance < minDistance) {
+        minDistance = distance;
+        closestId = id;
+      }
+    });
+
+    setProminentTileId(closestId);
+  }, [isMobile, tileIds]);
+
+  useEffect(() => {
+    if (!isMobile || tileIds.length === 0) {
+      setProminentTileId(null);
+      return;
     }
 
-    // Clear visible areas for tiles that are no longer in the list
-    const tileIdSet = new Set(tileIds);
-    visibleAreasRef.current.forEach((_, id) => {
-      if (!tileIdSet.has(id)) {
-        visibleAreasRef.current.delete(id);
+    // Debounced scroll handler using requestAnimationFrame
+    const handleScroll = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
       }
-    });
+      rafRef.current = requestAnimationFrame(findCenterTile);
+    };
 
-    // Create intersection observer with multiple thresholds
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const tileId = entry.target.getAttribute('data-tile-id');
-          if (!tileId || !tileIdSet.has(tileId)) return;
+    // Initial calculation
+    findCenterTile();
 
-          // Calculate visible area
-          const visibleArea = entry.intersectionRatio * (entry.target as HTMLElement).offsetHeight;
-          visibleAreasRef.current.set(tileId, visibleArea);
-        });
-
-        // Find tile with largest visible area (only from current tileIds)
-        let maxArea = 0;
-        let mostProminentId: string | null = null;
-
-        visibleAreasRef.current.forEach((area, id) => {
-          if (tileIdSet.has(id) && area > maxArea) {
-            maxArea = area;
-            mostProminentId = id;
-          }
-        });
-
-        // Only set prominent tile if it has significant visibility (at least 10% visible)
-        if (mostProminentId && maxArea > 0) {
-          setProminentTileId(mostProminentId);
-        } else {
-          setProminentTileId(null);
-        }
-      },
-      {
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0],
-        rootMargin: '0px',
-      }
-    );
-
-    // Observe all existing tiles that are in the current tileIds list
-    tileRefs.current.forEach((element, id) => {
-      if (tileIdSet.has(id) && observerRef.current) {
-        observerRef.current.observe(element);
-      }
-    });
+    // Listen for scroll events
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Also listen for resize events
+    window.addEventListener('resize', handleScroll, { passive: true });
 
     return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [isMobile, tileIds]);
+  }, [isMobile, tileIds, findCenterTile]);
 
   return { prominentTileId, getTileRef };
 };
@@ -613,9 +587,14 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
   return (
     <div 
       ref={getTileRef ? getTileRef(workout.id) : undefined}
-      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
-        isProminent ? 'scale-105' : ''
+      className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
+        isProminent 
+          ? 'scale-[1.02] border-gray-600 shadow-xl shadow-black/40 z-10' 
+          : 'border-gray-800 scale-100'
       }`}
+      style={{
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease',
+      }}
       onClick={() => onClick(workout)}
     >
       <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
@@ -623,7 +602,9 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           <img 
             src={workout.gifUrl} 
             alt={workout.name}
-            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+            className={`w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 ${
+              isProminent ? 'opacity-90' : 'opacity-60'
+            }`}
             loading="lazy"
           />
         ) : (
@@ -635,7 +616,9 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           tag={workout.tag}
           categoryStyles={styles}
         />
-        <h3 className="text-xl font-bold mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 select-none ${
+          isProminent ? 'text-white' : 'group-hover:text-white'
+        }`}>{workout.name}</h3>
         <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
         <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
@@ -1013,8 +996,8 @@ const App: React.FC = () => {
     return filteredWorkouts.map(w => w.id);
   }, [appMode, viewingWorkoutId, savedWorkouts, filteredWorkouts]);
 
-  // Prominent tile detection for mobile (disabled for scrolling views)
-  const shouldUseProminentTile = isMobile && appMode !== 'view' && appMode !== 'create' && appMode !== 'view-saved';
+  // Prominent tile detection for mobile - enabled for all list screens
+  const shouldUseProminentTile = isMobile && (appMode === 'view' || appMode === 'create' || appMode === 'view-saved');
   const { prominentTileId, getTileRef } = useProminentTile(tileIds, shouldUseProminentTile);
 
   const getCategoryStyles = (category: Category) => {
@@ -1519,9 +1502,12 @@ const App: React.FC = () => {
                   key={workout.id}
                   ref={getTileRef(workout.id)}
                   onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => setSelectedWorkout(workout)}
-                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
-                    isProminent ? 'scale-105' : ''
+                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : isProminent ? 'border-2 border-gray-600' : styles.border} rounded-[2rem] overflow-hidden flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
+                    isProminent ? 'scale-[1.03] shadow-xl shadow-black/50 z-10' : 'shadow-sm scale-100'
                   }`}
+                  style={{
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease',
+                  }}
                 >
                   {isSelected && (
                     <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
@@ -1535,7 +1521,9 @@ const App: React.FC = () => {
                       <img 
                         src={workout.gifUrl} 
                         alt={workout.name}
-                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                        className={`w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 ${
+                          isProminent ? 'opacity-90' : 'opacity-60'
+                        }`}
                         loading="lazy"
                       />
                       ) : (
@@ -1552,7 +1540,9 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="text-xl font-bold mb-4 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
+                    <h3 className={`text-xl font-bold mb-4 transition-colors duration-300 text-center ${
+                      isProminent ? 'text-white' : 'group-hover:text-white'
+                    }`}>{workout.name}</h3>
                     
                     <div className="mt-auto">
                       {isCreateMode ? (
