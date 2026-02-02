@@ -1392,8 +1392,8 @@ const App: React.FC = () => {
       </main>
 
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4">
-          <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4 overflow-y-auto">
+          <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative mt-8 md:mt-0 mb-8 md:mb-0">
             <button 
               onClick={closeSaveModal}
               className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
@@ -1402,8 +1402,8 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">
+            <div className="p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-bold mb-6">
                 {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
               </h2>
               <input
@@ -1412,7 +1412,7 @@ const App: React.FC = () => {
                 onChange={(e) => setWorkoutNameInput(e.target.value)}
                 placeholder="Enter workout name..."
                 maxLength={50}
-                className="w-full px-4 py-3 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4"
+                className="w-full px-4 py-3 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4 text-base"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
