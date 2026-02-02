@@ -1,5 +1,5 @@
 
-export type Category = 'All' | 'Chest + Arms' | 'Legs' | 'Back + Shoulders';
+export type Category = 'Chest + Arms' | 'Legs' | 'Back + Shoulders';
 
 export interface Workout {
   id: string;

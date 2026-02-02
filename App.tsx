@@ -3,12 +3,10 @@ import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category } from './types';
 
 const App: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<Category>('All');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('Chest + Arms');
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
-  const filteredWorkouts = selectedCategory === 'All' 
-    ? WORKOUT_LIBRARY 
-    : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
+  const filteredWorkouts = WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
@@ -32,13 +30,6 @@ const App: React.FC = () => {
           border: 'border-purple-500/20', 
           text: 'text-white', 
           bg: 'bg-purple-600' 
-        };
-      default: 
-        return { 
-          gradient: 'from-gray-600 to-gray-400',
-          border: 'border-gray-800', 
-          text: 'text-white', 
-          bg: 'bg-gray-700' 
         };
     }
   };
