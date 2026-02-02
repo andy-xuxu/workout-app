@@ -4,6 +4,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -294,6 +295,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
     opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 50 : 1,
+    touchAction: isDragging ? 'none' : 'pan-y', // Allow vertical scrolling when not dragging
   };
   
   // Only set transform when we have a value from @dnd-kit
@@ -314,6 +316,16 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
       {...attributes}
       {...listeners}
     >
+      {/* Drag Handle Indicator */}
+      <div
+        className="absolute top-4 left-4 z-10 p-2 text-gray-500 pointer-events-none"
+        aria-hidden="true"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+        </svg>
+      </div>
+
       {/* Remove Button */}
       <button
         onClick={(e) => {
@@ -324,7 +336,10 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
           e.stopPropagation();
           e.preventDefault();
         }}
-        className="absolute top-4 right-4 z-20 p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white transition-colors"
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
+        className="absolute top-4 right-4 z-20 p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white transition-colors touch-none"
         aria-label={`Remove ${workout.name}`}
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -373,6 +388,12 @@ const App: React.FC = () => {
 
   // Configure drag-and-drop sensors
   const sensors = useSensors(
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200, // 200ms delay before activation on touch
+        tolerance: 5, // 5px tolerance for touch movement
+      },
+    }),
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // Require 8px of movement before activating drag
@@ -997,6 +1018,14 @@ const App: React.FC = () => {
                   >
                     Clear
                   </button>
+                </div>
+                <div className="mb-4 p-3 bg-[#111111] border border-gray-800 rounded-xl">
+                  <p className="text-gray-400 text-sm text-center flex items-center justify-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                    </svg>
+                    <span>Hold to drag and drop to reorder your workout routine</span>
+                  </p>
                 </div>
                 <DndContext
                   sensors={sensors}
