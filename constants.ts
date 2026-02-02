@@ -82,7 +82,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Romanian-Deadlift.gif', 
     description: 'Posterior chain focused movement. Hinge at the hips and feel the stretch in your hamstrings.',
     targetMuscles: ['Hamstrings', 'Glutes', 'Lower Back'],
-    intensity: 'High'
+    intensity: 'Medium'
   },
   {
     id: 'l-4',
@@ -92,7 +92,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     gifUrl: 'https://www.inspireusafoundation.org/file/2023/08/smith-machine-calf-raise.gif', 
     description: 'Soleus isolation. Perform with a slow tempo and a full pause at the bottom stretch.',
     targetMuscles: ['Calves'],
-    intensity: 'Medium'
+    intensity: 'Low'
   },
 
   // --- Back + Shoulders Split ---
@@ -124,7 +124,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     gifUrl: 'https://www.inspireusafoundation.org/file/2022/10/cable-rear-delt-fly.gif', 
     description: 'Isolation for the rear deltoids. Maintain a slight bend in the elbows and squeeze at the back.',
     targetMuscles: ['Rear Delts', 'Traps'],
-    intensity: 'Medium'
+    intensity: 'Low'
   },
   {
     id: 'bs-4',
@@ -144,7 +144,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/09/Leaning-Cable-Lateral-Raise.gif', 
     description: 'Medial delt isolation. The cable provides constant tension which is superior for growth.',
     targetMuscles: ['Side Delts'],
-    intensity: 'Medium'
+    intensity: 'Low'
   }
 ];
 

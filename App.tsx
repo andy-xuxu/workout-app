@@ -255,7 +255,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">View Workouts</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Choose Workouts</h2>
                 <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Browse exercises by category</p>
               </div>
             </button>
@@ -270,7 +270,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-orange-400">Create New Workout</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-orange-400">Create Workout</h2>
                 <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Build your custom routine</p>
               </div>
             </button>
@@ -285,7 +285,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-400">My Saved Workouts</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-400">Saved Workouts</h2>
                 <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Access your routines</p>
               </div>
             </button>
@@ -313,8 +313,6 @@ const App: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold mb-8">My Saved Workouts</h2>
-          
           {savedWorkouts.length === 0 ? (
             <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
               <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -448,7 +446,13 @@ const App: React.FC = () => {
                             <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                               {workout.tag}
                             </span>
-                            <span className="text-xs text-gray-500 font-bold uppercase">{workout.intensity}</span>
+                            <span className={`px-3 py-1 ${
+                              workout.intensity === 'Low' ? 'bg-green-600 text-white' :
+                              workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
+                              'bg-red-600 text-white'
+                            } text-[10px] font-black rounded-lg uppercase tracking-widest`}>
+                              {workout.intensity}
+                            </span>
                           </div>
                           <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white">{workout.name}</h3>
                           <p className="text-gray-400 text-sm mb-3">{workout.description}</p>
@@ -501,9 +505,8 @@ const App: React.FC = () => {
         )}
 
         {isCreateMode && customWorkouts.length === 0 && (
-          <div className="mb-8 p-6 bg-[#111111] border border-gray-800 rounded-2xl text-center">
-            <p className="text-gray-400 text-lg mb-2">Tap workouts below to add them to your custom routine</p>
-            <p className="text-gray-500 text-sm">Select workouts from any category to build your personalized workout</p>
+          <div className="mb-8 p-6 bg-[#111111] border border-gray-800 rounded-2xl flex items-center justify-center text-center">
+            <p className="text-gray-400 text-lg mb-2 mx-auto">Tap workouts below to add them to your custom routine</p>
           </div>
         )}
 
@@ -551,6 +554,13 @@ const App: React.FC = () => {
                   <div className="absolute top-4 left-4 flex gap-2">
                      <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                       {workout.tag}
+                    </span>
+                    <span className={`px-3 py-1.5 ${
+                      workout.intensity === 'Low' ? 'bg-green-600 text-white' :
+                      workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
+                      'bg-red-600 text-white'
+                    } text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                      {workout.intensity}
                     </span>
                   </div>
                 </div>
