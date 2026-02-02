@@ -352,7 +352,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
 
       <div className="flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-3 mb-2">
-          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
             {workout.tag}
           </span>
           <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -677,7 +677,7 @@ const App: React.FC = () => {
               className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-blue-500/50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
                   <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
@@ -692,7 +692,7 @@ const App: React.FC = () => {
               className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-orange-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-orange-500/50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/50">
                   <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-125" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -707,7 +707,7 @@ const App: React.FC = () => {
               className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-purple-500/50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-purple-500/50">
                   <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
@@ -852,7 +852,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -1128,7 +1128,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -1197,7 +1197,7 @@ const App: React.FC = () => {
                       )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                     <div className="absolute top-4 left-4 flex gap-2">
-                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
