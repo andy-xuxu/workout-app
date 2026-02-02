@@ -178,7 +178,7 @@ const App: React.FC = () => {
       setSavedWorkouts(loadSavedWorkouts());
       setShowSaveModal(false);
       setWorkoutNameInput('');
-      setEditingWorkoutId(null);
+      // Keep editingWorkoutId set so subsequent saves continue to update the same workout
     } else {
       // Create new workout
       const newWorkout: SavedWorkout = {
@@ -247,46 +247,46 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <button
               onClick={handleViewWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
-              <div className="mb-6 w-full">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-blue-500/50">
+                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">View Workouts</h2>
-                <p className="text-gray-500 text-sm text-center">Browse exercises by category</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">View Workouts</h2>
+                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Browse exercises by category</p>
               </div>
             </button>
             
             <button
               onClick={handleCreateNewWorkout}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-orange-500/50 transition-all hover:shadow-2xl hover:shadow-orange-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-orange-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
-              <div className="mb-6 w-full">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-orange-500/50">
+                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-125" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">Create New Workout</h2>
-                <p className="text-gray-500 text-sm text-center">Build your custom routine</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-orange-400">Create New Workout</h2>
+                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Build your custom routine</p>
               </div>
             </button>
 
             <button
               onClick={handleViewSavedWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-purple-500/50 transition-all hover:shadow-2xl hover:shadow-purple-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
-              <div className="mb-6 w-full">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-purple-500/50">
+                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">My Saved Workouts</h2>
-                <p className="text-gray-500 text-sm text-center">Access your routines</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-400">My Saved Workouts</h2>
+                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Access your routines</p>
               </div>
             </button>
           </div>
@@ -300,7 +300,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
         <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
+            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
               PulseFit Pro
             </h1>
           </div>
@@ -328,10 +328,10 @@ const App: React.FC = () => {
               {savedWorkouts.map((savedWorkout) => (
                 <div
                   key={savedWorkout.id}
-                  className="bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all"
+                  className="group bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60"
                 >
                   <div className="mb-4">
-                    <h3 className="text-xl font-bold mb-2">{savedWorkout.name}</h3>
+                    <h3 className="text-xl font-bold mb-2 transition-colors duration-300 group-hover:text-white">{savedWorkout.name}</h3>
                     <p className="text-gray-500 text-sm mb-1">
                       {savedWorkout.workouts.length} {savedWorkout.workouts.length === 1 ? 'exercise' : 'exercises'}
                     </p>
@@ -364,7 +364,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
       <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
         <div>
-          <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${isCreateMode ? 'from-orange-500 to-red-500' : getCategoryStyles(selectedCategory).gradient} bg-clip-text text-transparent inline-block transition-all duration-500`}>
+          <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
             PulseFit Pro
           </h1>
         </div>
@@ -425,7 +425,7 @@ const App: React.FC = () => {
                       <div
                         key={workout.id}
                         onClick={() => setSelectedWorkout(workout)}
-                        className="bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 transition-all cursor-pointer active:scale-[0.98]"
+                        className="group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 transition-all duration-300 cursor-pointer active:scale-[0.98] hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60"
                       >
                         <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
                           {workout.gifUrl ? (
@@ -445,12 +445,12 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
                           <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest`}>
+                            <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                               {workout.tag}
                             </span>
                             <span className="text-xs text-gray-500 font-bold uppercase">{workout.intensity}</span>
                           </div>
-                          <h3 className="text-xl font-bold mb-1">{workout.name}</h3>
+                          <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white">{workout.name}</h3>
                           <p className="text-gray-400 text-sm mb-3">{workout.description}</p>
                           <div className="flex flex-wrap gap-2">
                             {workout.targetMuscles.map(m => (
@@ -522,7 +522,7 @@ const App: React.FC = () => {
               <div 
                 key={workout.id}
                 onClick={isCreateMode ? () => handleWorkoutToggle(workout) : undefined}
-                className={`group relative bg-[#111111] border ${isSelected ? 'border-orange-500 border-2' : styles.border} rounded-[2rem] overflow-hidden transition-all flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60`}
+                className={`group relative bg-[#111111] border ${isSelected ? 'border-orange-500 border-2' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
               >
                 {isSelected && (
                   <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
@@ -549,14 +549,14 @@ const App: React.FC = () => {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                   <div className="absolute top-4 left-4 flex gap-2">
-                     <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg`}>
+                     <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                       {workout.tag}
                     </span>
                   </div>
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors text-center">{workout.name}</h3>
+                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
                   <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium text-center">{workout.description}</p>
                   
                   <div className="mt-auto">
@@ -584,7 +584,7 @@ const App: React.FC = () => {
       </main>
 
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all animate-in fade-in duration-300 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4">
           <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
             <button 
               onClick={() => {
@@ -641,7 +641,7 @@ const App: React.FC = () => {
       )}
 
       {selectedWorkout && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all animate-in fade-in duration-300 p-0 md:p-6">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
           <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
             <button 
               onClick={() => setSelectedWorkout(null)} 
