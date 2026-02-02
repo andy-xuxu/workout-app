@@ -9,7 +9,6 @@ export interface Workout {
   gifUrl: string; // Pre-loaded demo URL
   description: string;
   targetMuscles: string[];
-  intensity: 'Low' | 'Medium' | 'High';
 }
 
 export interface SavedWorkout {

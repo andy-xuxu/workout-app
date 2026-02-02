@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -12,7 +11,6 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -93,17 +91,6 @@ const BADGE_INLINE_STYLES: React.CSSProperties = {
 };
 
 // Helper functions
-const getIntensityBadgeClass = (intensity: 'Low' | 'Medium' | 'High'): string => {
-  switch (intensity) {
-    case 'Low':
-      return 'bg-green-600 text-white';
-    case 'Medium':
-      return 'bg-yellow-600 text-white';
-    case 'High':
-      return 'bg-red-600 text-white';
-  }
-};
-
 const formatDate = (timestamp: number): string => {
   const date = new Date(timestamp);
   const now = new Date();
@@ -279,17 +266,13 @@ const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 's
 // Workout Badges Component
 interface WorkoutBadgesProps {
   tag: string;
-  intensity: 'Low' | 'Medium' | 'High';
   categoryStyles: { bg: string; text: string };
-  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
   variant?: 'default' | 'compact';
 }
 
 const WorkoutBadges: React.FC<WorkoutBadgesProps> = ({
   tag,
-  intensity,
   categoryStyles,
-  getIntensityBadgeClass,
   variant = 'default',
 }) => {
   const paddingClass = variant === 'compact' ? 'px-3 py-1.5' : 'px-3 py-1';
@@ -300,9 +283,6 @@ const WorkoutBadges: React.FC<WorkoutBadgesProps> = ({
     <div className="flex items-center gap-3 mb-3">
       <span className={`${paddingClass} ${categoryStyles.bg} ${categoryStyles.text} text-[10px] font-black ${roundedClass} uppercase select-none relative z-10 overflow-hidden ${shadowClass}`} style={BADGE_INLINE_STYLES}>
         {tag}
-      </span>
-      <span className={`${paddingClass} ${getIntensityBadgeClass(intensity)} text-[10px] font-black ${roundedClass} uppercase tracking-widest select-none ${shadowClass}`}>
-        {intensity}
       </span>
     </div>
   );
@@ -603,9 +583,6 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
               </div>
             </div>
 
-            <div className="mt-auto pt-8 border-t border-gray-800/50">
-              <div className="text-[10px] font-black text-gray-500 tracking-widest uppercase">INTENSITY: {workout.intensity}</div>
-            </div>
           </div>
         </div>
       </div>
@@ -618,7 +595,6 @@ interface WorkoutListCardProps {
   workout: Workout;
   onClick: (workout: Workout) => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
-  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
   isProminent?: boolean;
   getTileRef?: (id: string) => (element: HTMLElement | null) => void;
   showViewButton?: boolean;
@@ -628,7 +604,6 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
   workout,
   onClick,
   getCategoryStyles,
-  getIntensityBadgeClass,
   isProminent = false,
   getTileRef,
   showViewButton = true,
@@ -658,9 +633,7 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
       <div className="flex-1 flex flex-col justify-center">
         <WorkoutBadges
           tag={workout.tag}
-          intensity={workout.intensity}
           categoryStyles={styles}
-          getIntensityBadgeClass={getIntensityBadgeClass}
         />
         <h3 className="text-xl font-bold mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
         <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
@@ -725,9 +698,8 @@ interface WorkoutRoutineDrawerProps {
   onClick: (workout: Workout) => void;
   onSave: () => void;
   onClear: () => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
+  onReorder: (oldIndex: number, newIndex: number) => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
-  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
   hasWorkoutChanges: boolean;
   editingWorkoutId: string | null;
   isMobile: boolean;
@@ -743,37 +715,35 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
   onClear,
   onReorder,
   getCategoryStyles,
-  getIntensityBadgeClass,
   hasWorkoutChanges,
   editingWorkoutId,
   isMobile,
 }) => {
+  // Configure sensors for both mouse/pointer and touch
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // 8px movement required before drag starts
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
-        tolerance: 8,
+        delay: 150, // 150ms hold before drag starts on touch
+        tolerance: 5, // 5px movement tolerance during delay
       },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
+    
     if (over && active.id !== over.id) {
-      const oldIndex = workouts.findIndex((w) => w.id === active.id);
-      const newIndex = workouts.findIndex((w) => w.id === over.id);
+      const oldIndex = workouts.findIndex(w => w.id === active.id);
+      const newIndex = workouts.findIndex(w => w.id === over.id);
       onReorder(oldIndex, newIndex);
     }
   };
+
   return (
     <>
       {/* Backdrop */}
@@ -850,18 +820,17 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={workouts.map((w) => w.id)}
+                items={workouts.map(w => w.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-4">
                   {workouts.map((workout) => (
-                    <WorkoutRoutineCard
+                    <SortableWorkoutCard
                       key={workout.id}
                       workout={workout}
                       onRemove={onRemove}
                       onClick={onClick}
                       getCategoryStyles={getCategoryStyles}
-                      getIntensityBadgeClass={getIntensityBadgeClass}
                     />
                   ))}
                 </div>
@@ -874,24 +843,32 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
   );
 };
 
-// Workout Routine Card Component
-interface WorkoutRoutineCardProps {
+// Drag Handle Icon Component
+const DragHandleIcon: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="6" r="1.5" />
+    <circle cx="15" cy="6" r="1.5" />
+    <circle cx="9" cy="12" r="1.5" />
+    <circle cx="15" cy="12" r="1.5" />
+    <circle cx="9" cy="18" r="1.5" />
+    <circle cx="15" cy="18" r="1.5" />
+  </svg>
+);
+
+// Sortable Workout Card Component (with drag and drop)
+interface SortableWorkoutCardProps {
   workout: Workout;
   onRemove: (workoutId: string) => void;
   onClick: (workout: Workout) => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
-  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
 }
 
-const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
+const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
   workout,
   onRemove,
   onClick,
   getCategoryStyles,
-  getIntensityBadgeClass,
 }) => {
-  const styles = getCategoryStyles(workout.category);
-  
   const {
     attributes,
     listeners,
@@ -901,18 +878,19 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
     isDragging,
   } = useSortable({ id: workout.id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    WebkitUserSelect: 'none' as const,
-    userSelect: 'none' as const,
-    WebkitTouchCallout: 'none' as const,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
   };
 
+  const styles = getCategoryStyles(workout.category);
+
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent click if clicking on the remove button
+    // Prevent click if clicking on the remove button or drag handle
     const target = e.target as HTMLElement;
-    if (target.closest('button[aria-label*="Remove"]')) {
+    if (target.closest('button[aria-label*="Remove"]') || target.closest('[data-drag-handle]')) {
       return;
     }
     onClick(workout);
@@ -922,15 +900,22 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       onClick={handleClick}
-      className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none ${
-        isDragging 
-          ? 'cursor-grabbing z-30 scale-95 border-2 border-white/50 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
-          : 'cursor-grab border border-gray-800 hover:border-gray-700'
+      className={`group bg-[#111111] border border-gray-800 hover:border-gray-700 rounded-2xl overflow-hidden flex gap-3 md:gap-4 p-4 md:p-4 relative select-none ${
+        isDragging ? 'shadow-2xl shadow-black/80 scale-[1.02]' : ''
       }`}
     >
+      {/* Drag Handle */}
+      <div
+        data-drag-handle
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 flex items-center justify-center w-8 md:w-10 cursor-grab active:cursor-grabbing touch-none"
+        style={{ touchAction: 'none' }}
+      >
+        <DragHandleIcon className="w-5 h-5 md:w-6 md:h-6 text-gray-500 hover:text-gray-300 transition-colors" />
+      </div>
+
       {/* Remove Button */}
       <button
         onClick={(e) => {
@@ -952,14 +937,10 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
         </svg>
       </button>
 
-      <div 
-        className="flex-1 flex flex-col justify-center pt-1"
-      >
+      <div className="flex-1 flex flex-col justify-center pt-1 pr-12">
         <WorkoutBadges
           tag={workout.tag}
-          intensity={workout.intensity}
           categoryStyles={styles}
-          getIntensityBadgeClass={getIntensityBadgeClass}
         />
         <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none">
           {workout.name}
@@ -1114,16 +1095,9 @@ const App: React.FC = () => {
     setCustomWorkouts(prev => prev.filter(w => w.id !== workoutId));
   };
 
-  const handleReorderWorkouts = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    setCustomWorkouts(prev => {
-      const newWorkouts = [...prev];
-      const [removed] = newWorkouts.splice(fromIndex, 1);
-      newWorkouts.splice(toIndex, 0, removed);
-      return newWorkouts;
-    });
+  const handleReorderWorkouts = (oldIndex: number, newIndex: number) => {
+    setCustomWorkouts(prev => arrayMove(prev, oldIndex, newIndex));
   };
-
 
   const closeSaveModal = () => {
     setShowSaveModal(false);
@@ -1157,17 +1131,17 @@ const App: React.FC = () => {
   const hasWorkoutChanges = useMemo(() => {
     if (!editingWorkoutId || !originalWorkout) return true; // New workout always has "changes"
     
-    // Compare workouts by IDs (as sets, ignoring order)
-    const originalIds = new Set(originalWorkout.workouts.map(w => w.id));
-    const currentIds = new Set(customWorkouts.map(w => w.id));
+    // Compare workouts by IDs and order
+    const originalIds = originalWorkout.workouts.map(w => w.id);
+    const currentIds = customWorkouts.map(w => w.id);
     
-    // Check if sets match
-    if (originalIds.size !== currentIds.size) {
+    // Check if length matches
+    if (originalIds.length !== currentIds.length) {
       return true;
     }
     
-    // Check if all IDs match
-    const workoutsChanged = Array.from(originalIds).some(id => !currentIds.has(id));
+    // Check if all IDs match in the same order
+    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
     
     return workoutsChanged;
   }, [editingWorkoutId, originalWorkout, customWorkouts]);
@@ -1179,17 +1153,17 @@ const App: React.FC = () => {
     const currentName = workoutNameInput.trim();
     const nameChanged = currentName !== originalWorkout.name;
     
-    // Compare workouts by IDs (as sets, ignoring order)
-    const originalIds = new Set(originalWorkout.workouts.map(w => w.id));
-    const currentIds = new Set(customWorkouts.map(w => w.id));
+    // Compare workouts by IDs and order
+    const originalIds = originalWorkout.workouts.map(w => w.id);
+    const currentIds = customWorkouts.map(w => w.id);
     
-    // Check if sets match
-    if (originalIds.size !== currentIds.size) {
+    // Check if length matches
+    if (originalIds.length !== currentIds.length) {
       return true;
     }
     
-    // Check if all IDs match
-    const workoutsChanged = Array.from(originalIds).some(id => !currentIds.has(id));
+    // Check if all IDs match in the same order
+    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
     
     return nameChanged || workoutsChanged;
   }, [editingWorkoutId, originalWorkout, workoutNameInput, customWorkouts]);
@@ -1429,7 +1403,6 @@ const App: React.FC = () => {
                 workout={workout}
                 onClick={setSelectedWorkout}
                 getCategoryStyles={getCategoryStyles}
-                getIntensityBadgeClass={getIntensityBadgeClass}
                 isProminent={isMobile && prominentTileId === workout.id}
                 getTileRef={getTileRef}
                 showViewButton={false}
@@ -1528,7 +1501,6 @@ const App: React.FC = () => {
                 workout={workout}
                 onClick={setSelectedWorkout}
                 getCategoryStyles={getCategoryStyles}
-                getIntensityBadgeClass={getIntensityBadgeClass}
                 isProminent={isMobile && prominentTileId === workout.id}
                 getTileRef={getTileRef}
                 showViewButton={false}
@@ -1573,9 +1545,7 @@ const App: React.FC = () => {
                     <div className="absolute top-4 left-4">
                       <WorkoutBadges
                         tag={workout.tag}
-                        intensity={workout.intensity}
                         categoryStyles={styles}
-                        getIntensityBadgeClass={getIntensityBadgeClass}
                         variant="compact"
                       />
                     </div>
@@ -1711,7 +1681,6 @@ const App: React.FC = () => {
           onClear={handleClearCustomWorkout}
           onReorder={handleReorderWorkouts}
           getCategoryStyles={getCategoryStyles}
-          getIntensityBadgeClass={getIntensityBadgeClass}
           hasWorkoutChanges={hasWorkoutChanges}
           editingWorkoutId={editingWorkoutId}
           isMobile={isMobile}
