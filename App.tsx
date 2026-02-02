@@ -384,10 +384,15 @@ const App: React.FC = () => {
   );
 
   // Get unique tags from workout library
-  const availableTags = useMemo(
-    () => Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort(),
-    []
-  );
+  const availableTags = useMemo(() => {
+    const tags = Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag)));
+    // Sort tags with "Legs" last
+    return tags.sort((a, b) => {
+      if (a === 'Legs') return 1;
+      if (b === 'Legs') return -1;
+      return a.localeCompare(b);
+    });
+  }, []);
 
   const filteredWorkouts = useMemo(() => {
     if (isCreateMode) {
