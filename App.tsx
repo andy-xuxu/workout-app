@@ -62,7 +62,7 @@ const App: React.FC = () => {
   const [workoutNameInput, setWorkoutNameInput] = useState('');
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
-  
+
   const isCreateMode = appMode === 'create';
 
   // Get unique tags from workout library
@@ -894,6 +894,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
