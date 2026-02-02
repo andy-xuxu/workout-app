@@ -502,8 +502,8 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
   const styles = getCategoryStyles(workout.category);
   
   return (
-    <div className="fixed inset-0 z-[70] flex items-start md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
-      <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full h-full md:h-auto max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative md:max-h-[90vh] flex flex-col`}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
+      <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full h-full md:h-auto md:w-auto md:max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative md:max-h-[90vh] flex flex-col mx-auto`}>
         <button 
           onClick={onClose} 
           className="absolute top-4 right-4 md:top-6 md:right-6 z-20 p-2.5 md:p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
@@ -513,8 +513,8 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
           </svg>
         </button>
 
-        <div className="flex flex-col lg:flex-row overflow-y-auto">
-          <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-3 md:p-12 min-h-[250px] md:min-h-[400px] lg:min-h-[600px]">
+        <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
+          <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-3 md:p-12 flex-1 min-h-[50vh] md:min-h-[400px] lg:min-h-[600px]">
             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.gradient}`}></div>
             
             <div className="relative w-full h-full flex items-center justify-center">
@@ -522,35 +522,35 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
                 <img 
                   src={workout.gifUrl} 
                   alt={workout.name}
-                  className="max-w-full max-h-[300px] md:max-h-[500px] lg:max-h-[700px] object-contain rounded-2xl md:rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
+                  className="max-w-full max-h-[60vh] md:max-h-[500px] lg:max-h-[700px] object-contain rounded-xl md:rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50 mx-auto"
                 />
               ) : (
-                <div className="text-center p-6 md:p-12 bg-gray-900/20 rounded-2xl md:rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
+                <div className="text-center p-4 md:p-12 bg-gray-900/20 rounded-xl md:rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md mx-auto">
                   <EmptyGifPlaceholder size="large" />
                 </div>
               )}
             </div>
           </div>
 
-          <div className="lg:w-2/5 p-4 md:p-8 lg:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
-            <div className="mb-6 md:mb-12">
-              <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
-                <span className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-gradient-to-br ${styles.gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
-                <span className={`text-[10px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em]`}>
+          <div className="lg:w-2/5 p-3 md:p-8 lg:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50 mx-auto w-full max-w-full">
+            <div className="mb-4 md:mb-12">
+              <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-6">
+                <span className={`w-2 h-2 md:w-3 md:h-3 rounded-full bg-gradient-to-br ${styles.gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
+                <span className={`text-[9px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em]`}>
                   {workout.tag}
                 </span>
               </div>
-              <h2 className="text-3xl md:text-5xl font-black mb-4 md:mb-6 leading-none tracking-tighter">{workout.name}</h2>
-              <p className="text-gray-400 text-sm md:text-base leading-relaxed font-medium">{workout.description}</p>
+              <h2 className="text-2xl md:text-5xl font-black mb-3 md:mb-6 leading-tight md:leading-none tracking-tighter">{workout.name}</h2>
+              <p className="text-gray-400 text-xs md:text-base leading-relaxed font-medium">{workout.description}</p>
             </div>
 
-            <div className="mb-6 md:mb-12">
-              <h4 className={`text-[10px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em] mb-4 md:mb-6 border-b border-gray-800/50 pb-3 md:pb-4`}>
+            <div className="mb-4 md:mb-12">
+              <h4 className={`text-[9px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em] mb-3 md:mb-6 border-b border-gray-800/50 pb-2 md:pb-4`}>
                 TARGET MUSCLES
               </h4>
-              <div className="flex flex-wrap gap-2 md:gap-3">
+              <div className="flex flex-wrap gap-1.5 md:gap-3">
                 {workout.targetMuscles.map(m => (
-                  <span key={m} className="px-3 py-1.5 md:px-5 md:py-2.5 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg md:rounded-xl border border-gray-800 uppercase tracking-tight">
+                  <span key={m} className="px-2.5 py-1 md:px-5 md:py-2.5 bg-black/40 text-gray-400 text-[8px] md:text-[10px] font-black rounded-md md:rounded-xl border border-gray-800 uppercase tracking-tight">
                     {m}
                   </span>
                 ))}
