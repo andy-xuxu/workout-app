@@ -1,5 +1,6 @@
-const CACHE_NAME = 'pulsefit-pro-v7';
-const BASE_PATH = '/workout-app/';
+const CACHE_NAME = 'pulsefit-pro-v8';
+// Detect base path dynamically
+const BASE_PATH = self.location.pathname.includes('/workout-app/') ? '/workout-app/' : '/';
 const PRECACHE_ASSETS = [
   BASE_PATH,
   BASE_PATH + 'index.html',

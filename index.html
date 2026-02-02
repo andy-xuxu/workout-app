@@ -6,7 +6,7 @@
     <title>PulseFit Pro</title>
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/workout-app/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0a0a0a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -235,8 +235,8 @@
       
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Use base path for GitHub Pages
-          const basePath = '/workout-app/';
+          // Detect base path dynamically
+          const basePath = window.location.pathname.includes('/workout-app/') ? '/workout-app/' : '/';
           navigator.serviceWorker.register(basePath + 'sw.js').catch(err => console.log('SW registration failed:', err));
         });
       }

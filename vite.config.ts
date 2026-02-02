@@ -4,8 +4,12 @@ import { copyFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 export default defineConfig(() => {
+    // Use environment variable for base path, default to '/' for Vercel
+    // Set VITE_BASE_PATH=/workout-app/ for GitHub Pages deployment
+    const basePath = process.env.VITE_BASE_PATH || '/';
+    
     return {
-      base: '/workout-app/', // GitHub Pages base path
+      base: basePath,
       server: {
         port: 3000,
         host: '0.0.0.0',

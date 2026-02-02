@@ -5,17 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PulseFit Pro</title>
     <script>
-        // Redirect to index.html for GitHub Pages SPA routing
+        // Redirect to index.html for SPA routing
         sessionStorage.redirect = location.href;
-        const basePath = '/workout-app/';
-        const path = location.pathname;
-        // Ensure we redirect to the base path + index.html
-        if (path.startsWith(basePath)) {
-          location.replace(basePath + 'index.html');
-        } else {
-          // Fallback: go to base path
-          location.replace(basePath + 'index.html');
-        }
+        // Detect base path dynamically
+        const basePath = location.pathname.includes('/workout-app/') ? '/workout-app/' : '/';
+        location.replace(basePath + 'index.html');
     </script>
 </head>
 <body>
