@@ -11,3 +11,10 @@ export interface Workout {
   targetMuscles: string[];
   intensity: 'Low' | 'Medium' | 'High';
 }
+
+export interface SavedWorkout {
+  id: string; // unique ID for the saved workout
+  name: string; // user-provided name
+  workouts: Workout[]; // array of workout exercises
+  createdAt: number; // timestamp for sorting
+}

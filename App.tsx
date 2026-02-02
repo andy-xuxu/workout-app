@@ -1,8 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
-import { Workout, Category } from './types';
+import { Workout, Category, SavedWorkout } from './types';
 
-type AppMode = 'landing' | 'view' | 'create';
+type AppMode = 'landing' | 'view' | 'create' | 'saved';
+
+const STORAGE_KEY = 'pulsefit-saved-workouts';
+
+// localStorage helper functions
+const loadSavedWorkouts = (): SavedWorkout[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error('Error loading saved workouts:', error);
+    return [];
+  }
+};
+
+const saveWorkoutToStorage = (workout: SavedWorkout): void => {
+  try {
+    const saved = loadSavedWorkouts();
+    saved.push(workout);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  } catch (error) {
+    console.error('Error saving workout:', error);
+  }
+};
+
+const deleteWorkoutFromStorage = (workoutId: string): void => {
+  try {
+    const saved = loadSavedWorkouts();
+    const filtered = saved.filter(w => w.id !== workoutId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error deleting workout:', error);
+  }
+};
+
+const updateSavedWorkout = (workoutId: string, updates: Partial<SavedWorkout>): void => {
+  try {
+    const saved = loadSavedWorkouts();
+    const index = saved.findIndex(w => w.id === workoutId);
+    if (index !== -1) {
+      saved[index] = { ...saved[index], ...updates };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    }
+  } catch (error) {
+    console.error('Error updating workout:', error);
+  }
+};
 
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('landing');
@@ -10,6 +57,10 @@ const App: React.FC = () => {
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [customWorkouts, setCustomWorkouts] = useState<Workout[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [savedWorkouts, setSavedWorkouts] = useState<SavedWorkout[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [workoutNameInput, setWorkoutNameInput] = useState('');
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   
   const isCreateMode = appMode === 'create';
 
@@ -69,9 +120,11 @@ const App: React.FC = () => {
   const handleCreateModeToggle = () => {
     if (isCreateMode) {
       setCustomWorkouts([]);
+      setEditingWorkoutId(null);
       setAppMode('view');
     } else {
       setAppMode('create');
+      setEditingWorkoutId(null);
     }
   };
 
@@ -84,20 +137,103 @@ const App: React.FC = () => {
     setAppMode('create');
     setCustomWorkouts([]);
     setSelectedTag(null);
+    setEditingWorkoutId(null);
   };
 
   const handleBackToLanding = () => {
     setAppMode('landing');
     setSelectedWorkout(null);
     setCustomWorkouts([]);
+    setEditingWorkoutId(null);
   };
 
   const handleClearCustomWorkout = () => {
     setCustomWorkouts([]);
+    setEditingWorkoutId(null);
+  };
+
+  const handleSaveWorkout = () => {
+    if (customWorkouts.length === 0) return;
+    setShowSaveModal(true);
+    // If editing an existing workout, pre-fill the name
+    if (editingWorkoutId) {
+      const workout = savedWorkouts.find(w => w.id === editingWorkoutId);
+      setWorkoutNameInput(workout?.name || '');
+    } else {
+      setWorkoutNameInput('');
+    }
+  };
+
+  const handleSaveWorkoutConfirm = () => {
+    const name = workoutNameInput.trim();
+    if (!name || name.length === 0) return;
+    if (name.length > 50) return;
+
+    if (editingWorkoutId) {
+      // Update existing workout
+      updateSavedWorkout(editingWorkoutId, {
+        name,
+        workouts: [...customWorkouts]
+      });
+      setSavedWorkouts(loadSavedWorkouts());
+      setShowSaveModal(false);
+      setWorkoutNameInput('');
+      setEditingWorkoutId(null);
+    } else {
+      // Create new workout
+      const newWorkout: SavedWorkout = {
+        id: Date.now().toString(),
+        name,
+        workouts: [...customWorkouts],
+        createdAt: Date.now()
+      };
+      saveWorkoutToStorage(newWorkout);
+      setSavedWorkouts(loadSavedWorkouts());
+      setShowSaveModal(false);
+      setWorkoutNameInput('');
+    }
+  };
+
+  const handleLoadSavedWorkout = (workoutId: string) => {
+    const workout = savedWorkouts.find(w => w.id === workoutId);
+    if (workout) {
+      setCustomWorkouts(workout.workouts);
+      setEditingWorkoutId(workoutId);
+      setAppMode('create');
+      setSelectedTag(null);
+    }
+  };
+
+  const handleDeleteSavedWorkout = (workoutId: string) => {
+    if (window.confirm('Delete this saved workout?')) {
+      deleteWorkoutFromStorage(workoutId);
+      setSavedWorkouts(loadSavedWorkouts());
+    }
+  };
+
+  const handleViewSavedWorkouts = () => {
+    setAppMode('saved');
   };
 
   const isWorkoutSelected = (workoutId: string) => {
     return customWorkouts.some(w => w.id === workoutId);
+  };
+
+  // Load saved workouts on mount
+  useEffect(() => {
+    setSavedWorkouts(loadSavedWorkouts());
+  }, []);
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
   };
 
   if (appMode === 'landing') {
@@ -108,7 +244,7 @@ const App: React.FC = () => {
             PulseFit Pro
           </h1>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <button
               onClick={handleViewWorkouts}
               className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-[0.98]"
@@ -119,7 +255,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold mb-2">View Workouts</h2>
+                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">View Workouts</h2>
                 <p className="text-gray-500 text-sm">Browse exercises by category</p>
               </div>
             </button>
@@ -134,12 +270,92 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Create New Workout</h2>
+                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">Create New Workout</h2>
                 <p className="text-gray-500 text-sm">Build your custom routine</p>
+              </div>
+            </button>
+
+            <button
+              onClick={handleViewSavedWorkouts}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 transition-all hover:shadow-2xl hover:shadow-purple-500/20 active:scale-[0.98]"
+            >
+              <div className="mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">My Saved Workouts</h2>
+                <p className="text-gray-500 text-sm">Access your routines</p>
               </div>
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (appMode === 'saved') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
+        <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
+              PulseFit Pro
+            </h1>
+          </div>
+          <button
+            onClick={handleBackToLanding}
+            className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+          >
+            ← Back
+          </button>
+        </header>
+
+        <main className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold mb-8">My Saved Workouts</h2>
+          
+          {savedWorkouts.length === 0 ? (
+            <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              <p className="text-gray-400 text-lg mb-2">No saved workouts yet</p>
+              <p className="text-gray-500 text-sm">Create one in the workout builder!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedWorkouts.map((savedWorkout) => (
+                <div
+                  key={savedWorkout.id}
+                  className="bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all"
+                >
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold mb-2">{savedWorkout.name}</h3>
+                    <p className="text-gray-500 text-sm mb-1">
+                      {savedWorkout.workouts.length} {savedWorkout.workouts.length === 1 ? 'exercise' : 'exercises'}
+                    </p>
+                    <p className="text-gray-600 text-xs">Created {formatDate(savedWorkout.createdAt)}</p>
+                  </div>
+                  <div className="flex gap-2 mt-6">
+                    <button
+                      onClick={() => handleLoadSavedWorkout(savedWorkout.id)}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                    >
+                      View / Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSavedWorkout(savedWorkout.id)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
       </div>
     );
   }
@@ -188,10 +404,13 @@ const App: React.FC = () => {
           <>
             {customWorkouts.length > 0 && (
               <div className="mb-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl md:text-3xl font-bold text-white">
-                    Your Custom Workout ({customWorkouts.length} {customWorkouts.length === 1 ? 'exercise' : 'exercises'})
-                  </h2>
+                <div className="flex justify-end items-center gap-3 mb-6">
+                  <button
+                    onClick={handleSaveWorkout}
+                    className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                  >
+                    Save
+                  </button>
                   <button
                     onClick={handleClearCustomWorkout}
                     className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
@@ -364,6 +583,63 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all animate-in fade-in duration-300 p-4">
+          <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
+            <button 
+              onClick={() => {
+                setShowSaveModal(false);
+                setWorkoutNameInput('');
+                setEditingWorkoutId(null);
+              }}
+              className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="p-8">
+              <h2 className="text-2xl font-bold mb-6">
+                {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
+              </h2>
+              <input
+                type="text"
+                value={workoutNameInput}
+                onChange={(e) => setWorkoutNameInput(e.target.value)}
+                placeholder="Enter workout name..."
+                maxLength={50}
+                className="w-full px-4 py-3 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveWorkoutConfirm();
+                  }
+                }}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveWorkoutConfirm}
+                  disabled={!workoutNameInput.trim() || workoutNameInput.trim().length === 0}
+                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                >
+                  {editingWorkoutId ? 'Update' : 'Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSaveModal(false);
+                    setWorkoutNameInput('');
+                    setEditingWorkoutId(null);
+                  }}
+                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedWorkout && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all animate-in fade-in duration-300 p-0 md:p-6">
           <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
@@ -400,7 +676,7 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-4 mb-6">
                      <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${getCategoryStyles(selectedWorkout.category).gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
                      <span className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em]`}>
-                       {selectedWorkout.category} / {selectedWorkout.tag}
+                       {selectedWorkout.tag}
                      </span>
                   </div>
                   <h2 className="text-5xl font-black mb-6 leading-none tracking-tighter">{selectedWorkout.name}</h2>
