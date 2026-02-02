@@ -896,11 +896,16 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
           categoryStyles={styles}
           getIntensityBadgeClass={getIntensityBadgeClass}
         />
-        <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-        <p className="text-gray-400 text-sm mb-3 md:mb-4 select-none line-clamp-2">{workout.description}</p>
+        <h3 
+          className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none cursor-grab active:cursor-grabbing"
+          style={{ pointerEvents: 'auto' }}
+        >
+          {workout.name}
+        </h3>
+        <p className="text-gray-400 text-sm mb-3 md:mb-4 select-none line-clamp-2 cursor-grab active:cursor-grabbing">{workout.description}</p>
         <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
-            <span key={m} className="px-2 md:px-3 py-1 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+            <span key={m} className="px-2 md:px-3 py-1 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none cursor-grab active:cursor-grabbing">
               {m}
             </span>
           ))}
@@ -933,21 +938,21 @@ const App: React.FC = () => {
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
   // Custom activation constraint for touch that distinguishes scrolling from dragging
-  // Optimized to prevent accidental activation while scrolling
+  // Using delay-based activation to prevent accidental drags while allowing intentional drags
   const touchActivationConstraint = {
-    delay: 250, // Longer delay to prevent accidental drags during scroll
-    tolerance: 8, // Larger tolerance - requires more deliberate movement before activating
+    delay: 50, // Very short delay - allows quick drag activation on mobile
+    tolerance: 10, // Allow movement up to 10px before canceling - prevents accidental drags during scroll
   };
 
   // Configure drag-and-drop sensors
+  // TouchSensor first for mobile devices, then PointerSensor for desktop
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: touchActivationConstraint,
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // Increased distance to prevent accidental drags
-        delay: 150, // Add delay for pointer sensor too
+        distance: 8, // Distance to move before drag activates - prevents accidental drags
       },
     }),
     useSensor(KeyboardSensor, {
