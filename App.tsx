@@ -1373,23 +1373,28 @@ const App: React.FC = () => {
 
       {!isCreateMode && (
         <nav className="max-w-7xl mx-auto mb-10">
-          <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
-            {CATEGORIES.filter(cat => appMode === 'view' ? cat !== 'All' : true).map((cat) => {
-              const isActive = selectedCategory === cat && !isCreateMode;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat as Category)}
-                  className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
-                    isActive 
-                      ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]` 
-                      : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+          <div className="relative">
+            <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
+              {CATEGORIES.filter(cat => appMode === 'view' ? cat !== 'All' : true).map((cat) => {
+                const isActive = selectedCategory === cat && !isCreateMode;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat as Category)}
+                    className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
+                      isActive 
+                        ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]` 
+                        : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+            {isMobile && (
+              <div className="absolute top-0 right-0 w-16 h-full pointer-events-none bg-gradient-to-l from-[#0a0a0a] to-transparent" />
+            )}
           </div>
         </nav>
       )}
@@ -1397,33 +1402,38 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto">
         {isCreateMode && (
           <nav className="max-w-7xl mx-auto mb-10">
-            <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
-              <button
-                onClick={() => setSelectedTag(null)}
-                className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
-                  selectedTag === null
-                    ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
-                    : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                }`}
-              >
-                All
-              </button>
-              {availableTags.map((tag) => {
-                const isActive = selectedTag?.toLowerCase() === tag.toLowerCase();
-                return (
-                  <button
-                    key={tag}
-                    onClick={() => setSelectedTag(isActive ? null : tag)}
-                    className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 capitalize ${
-                      isActive
-                        ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
-                        : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
+                    selectedTag === null
+                      ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                      : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                  }`}
+                >
+                  All
+                </button>
+                {availableTags.map((tag) => {
+                  const isActive = selectedTag?.toLowerCase() === tag.toLowerCase();
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(isActive ? null : tag)}
+                      className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 capitalize ${
+                        isActive
+                          ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                          : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              {isMobile && (
+                <div className="absolute top-0 right-0 w-16 h-full pointer-events-none bg-gradient-to-l from-[#0a0a0a] to-transparent" />
+              )}
             </div>
           </nav>
         )}
