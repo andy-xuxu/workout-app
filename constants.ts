@@ -148,4 +148,4 @@ export const WORKOUT_LIBRARY: Workout[] = [
   }
 ];
 
-export const CATEGORIES: string[] = ['Chest + Arms', 'Legs', 'Back + Shoulders'];
+export const CATEGORIES: string[] = ['All', 'Chest + Arms', 'Legs', 'Back + Shoulders'];

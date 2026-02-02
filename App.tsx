@@ -2,11 +2,27 @@ import React, { useState } from 'react';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category } from './types';
 
-const App: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<Category>('Chest + Arms');
-  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+type AppMode = 'landing' | 'view' | 'create';
 
-  const filteredWorkouts = WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
+const App: React.FC = () => {
+  const [appMode, setAppMode] = useState<AppMode>('landing');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('All');
+  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+  const [customWorkouts, setCustomWorkouts] = useState<Workout[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  
+  const isCreateMode = appMode === 'create';
+
+  // Get unique tags from workout library
+  const availableTags = Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort();
+
+  const filteredWorkouts = isCreateMode
+    ? selectedTag
+      ? WORKOUT_LIBRARY.filter(w => w.tag.toLowerCase() === selectedTag.toLowerCase())
+      : WORKOUT_LIBRARY
+    : selectedCategory === 'All' 
+      ? WORKOUT_LIBRARY 
+      : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
@@ -31,90 +47,323 @@ const App: React.FC = () => {
           text: 'text-white', 
           bg: 'bg-purple-600' 
         };
+      case 'All':
+      default:
+        return { 
+          gradient: 'from-gray-600 to-gray-400',
+          border: 'border-gray-800', 
+          text: 'text-white', 
+          bg: 'bg-gray-700' 
+        };
     }
   };
+
+  const handleWorkoutToggle = (workout: Workout) => {
+    if (customWorkouts.some(w => w.id === workout.id)) {
+      setCustomWorkouts(customWorkouts.filter(w => w.id !== workout.id));
+    } else {
+      setCustomWorkouts([...customWorkouts, workout]);
+    }
+  };
+
+  const handleCreateModeToggle = () => {
+    if (isCreateMode) {
+      setCustomWorkouts([]);
+      setAppMode('view');
+    } else {
+      setAppMode('create');
+    }
+  };
+
+  const handleViewWorkouts = () => {
+    setAppMode('view');
+    setSelectedCategory('Chest + Arms');
+  };
+
+  const handleCreateNewWorkout = () => {
+    setAppMode('create');
+    setCustomWorkouts([]);
+    setSelectedTag(null);
+  };
+
+  const handleBackToLanding = () => {
+    setAppMode('landing');
+    setSelectedWorkout(null);
+    setCustomWorkouts([]);
+  };
+
+  const handleClearCustomWorkout = () => {
+    setCustomWorkouts([]);
+  };
+
+  const isWorkoutSelected = (workoutId: string) => {
+    return customWorkouts.some(w => w.id === workoutId);
+  };
+
+  if (appMode === 'landing') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30">
+        <div className="max-w-4xl w-full text-center">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+            PulseFit Pro
+          </h1>
+          <p className="text-gray-400 text-lg md:text-xl mb-12">Personal Technique Vault</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <button
+              onClick={handleViewWorkouts}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-[0.98]"
+            >
+              <div className="mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2">View Workouts</h2>
+                <p className="text-gray-500 text-sm">Browse exercises by category</p>
+              </div>
+            </button>
+            
+            <button
+              onClick={handleCreateNewWorkout}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all hover:shadow-2xl hover:shadow-orange-500/20 active:scale-[0.98]"
+            >
+              <div className="mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Create New Workout</h2>
+                <p className="text-gray-500 text-sm">Build your custom routine</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
       <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
         <div>
-          <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${getCategoryStyles(selectedCategory).gradient} bg-clip-text text-transparent inline-block transition-all duration-500`}>
+          <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${isCreateMode ? 'from-orange-500 to-red-500' : getCategoryStyles(selectedCategory).gradient} bg-clip-text text-transparent inline-block transition-all duration-500`}>
             PulseFit Pro
           </h1>
           <p className="text-gray-400 mt-1 text-base md:text-lg">Personal Technique Vault.</p>
         </div>
+        <button
+          onClick={handleBackToLanding}
+          className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+        >
+          ← Back
+        </button>
       </header>
 
-      <nav className="max-w-7xl mx-auto mb-10 overflow-x-auto scrollbar-hide -mx-4 px-4">
-        <div className="flex gap-3 pb-2">
-          {CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat;
+      {!isCreateMode && (
+        <nav className="max-w-7xl mx-auto mb-10">
+          <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
+            {CATEGORIES.filter(cat => appMode === 'view' ? cat !== 'All' : true).map((cat) => {
+              const isActive = selectedCategory === cat && !isCreateMode;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat as Category)}
+                  className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
+                    isActive 
+                      ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]` 
+                      : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
+      <main className="max-w-7xl mx-auto">
+        {isCreateMode && (
+          <>
+            {customWorkouts.length > 0 && (
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white">
+                    Your Custom Workout ({customWorkouts.length} {customWorkouts.length === 1 ? 'exercise' : 'exercises'})
+                  </h2>
+                  <button
+                    onClick={handleClearCustomWorkout}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {customWorkouts.map((workout) => {
+                    const styles = getCategoryStyles(workout.category);
+                    return (
+                      <div
+                        key={workout.id}
+                        onClick={() => setSelectedWorkout(workout)}
+                        className="bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 transition-all cursor-pointer active:scale-[0.98]"
+                      >
+                        <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
+                          {workout.gifUrl ? (
+                            <img
+                              src={workout.gifUrl}
+                              alt={workout.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-800">
+                              <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest`}>
+                              {workout.tag}
+                            </span>
+                            <span className="text-xs text-gray-500 font-bold uppercase">{workout.intensity}</span>
+                          </div>
+                          <h3 className="text-xl font-bold mb-1">{workout.name}</h3>
+                          <p className="text-gray-400 text-sm mb-3">{workout.description}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {workout.targetMuscles.map(m => (
+                              <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase">
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <nav className="max-w-7xl mx-auto mb-10">
+              <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
+                    selectedTag === null
+                      ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                      : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                  }`}
+                >
+                  All
+                </button>
+                {availableTags.map((tag) => {
+                  const isActive = selectedTag?.toLowerCase() === tag.toLowerCase();
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(isActive ? null : tag)}
+                      className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 capitalize ${
+                        isActive
+                          ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                          : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </>
+        )}
+
+        {isCreateMode && customWorkouts.length === 0 && (
+          <div className="mb-8 p-6 bg-[#111111] border border-gray-800 rounded-2xl text-center">
+            <p className="text-gray-400 text-lg mb-2">Tap workouts below to add them to your custom routine</p>
+            <p className="text-gray-500 text-sm">Select workouts from any category to build your personalized workout</p>
+          </div>
+        )}
+
+        {isCreateMode && customWorkouts.length > 0 && (
+          <div className="mb-8 p-4 bg-[#111111] border border-gray-800 rounded-2xl">
+            <p className="text-gray-400 text-sm text-center">Continue selecting workouts below to add more to your custom routine</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredWorkouts.map((workout) => {
+            const styles = getCategoryStyles(workout.category);
+            const isSelected = isWorkoutSelected(workout.id);
+
             return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat as Category)}
-                className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 ${
-                  isActive 
-                  ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]` 
-                  : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                }`}
+              <div 
+                key={workout.id}
+                onClick={isCreateMode ? () => handleWorkoutToggle(workout) : undefined}
+                className={`group relative bg-[#111111] border ${isSelected ? 'border-orange-500 border-2' : styles.border} rounded-[2rem] overflow-hidden transition-all flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60`}
               >
-                {cat}
-              </button>
+                {isSelected && (
+                  <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+                <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
+                  {workout.gifUrl ? (
+                    <img 
+                      src={workout.gifUrl} 
+                      alt={workout.name}
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
+                      <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
+                  <div className="absolute top-4 left-4 flex gap-2">
+                     <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg`}>
+                      {workout.tag}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors">{workout.name}</h3>
+                  <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium">{workout.description}</p>
+                  
+                  <div className="mt-auto">
+                    {isCreateMode ? (
+                      <div className={`w-full py-4 ${isSelected ? 'bg-orange-600' : 'bg-gray-700'} text-white text-[10px] font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-center`}>
+                        {isSelected ? 'Selected' : 'Tap to Add'}
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedWorkout(workout);
+                        }}
+                        className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest`}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredWorkouts.map((workout) => {
-          const styles = getCategoryStyles(workout.category);
-
-          return (
-            <div 
-              key={workout.id}
-              className={`group relative bg-[#111111] border ${styles.border} rounded-[2rem] overflow-hidden transition-all flex flex-col active:scale-[0.98] shadow-sm hover:shadow-2xl hover:shadow-black/60`}
-            >
-              <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
-                {workout.gifUrl ? (
-                  <img 
-                    src={workout.gifUrl} 
-                    alt={workout.name}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
-                    <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
-                <div className="absolute top-4 left-4 flex gap-2">
-                   <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg`}>
-                    {workout.tag}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6 flex-1 flex flex-col">
-                <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors">{workout.name}</h3>
-                <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium">{workout.description}</p>
-                
-                <div className="mt-auto">
-                  <button 
-                    onClick={() => setSelectedWorkout(workout)}
-                    className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest`}
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </main>
 
       {selectedWorkout && (
