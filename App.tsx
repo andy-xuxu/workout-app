@@ -960,8 +960,9 @@ const App: React.FC = () => {
     return filteredWorkouts.map(w => w.id);
   }, [appMode, viewingWorkoutId, savedWorkouts, filteredWorkouts]);
 
-  // Prominent tile detection for mobile
-  const { prominentTileId, getTileRef } = useProminentTile(tileIds, isMobile);
+  // Prominent tile detection for mobile (disabled for scrolling views)
+  const shouldUseProminentTile = isMobile && appMode !== 'view' && appMode !== 'create' && appMode !== 'view-saved';
+  const { prominentTileId, getTileRef } = useProminentTile(tileIds, shouldUseProminentTile);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
