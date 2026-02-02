@@ -266,7 +266,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Choose Workouts</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Choose Workout</h2>
                 <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Browse exercises by category</p>
               </div>
             </button>
