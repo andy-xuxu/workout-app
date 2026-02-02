@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { copyFileSync } from 'fs';
+import { copyFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 export default defineConfig(() => {
@@ -12,13 +12,19 @@ export default defineConfig(() => {
       },
       plugins: [
         react(),
-        // Copy sw.js, 404.html, and manifest.json to dist folder
+        // Copy sw.js, 404.html, manifest.json, and .nojekyll to dist folder
         {
           name: 'copy-assets',
           closeBundle() {
             copyFileSync('sw.js', 'dist/sw.js');
             copyFileSync('404.html', 'dist/404.html');
             copyFileSync('manifest.json', 'dist/manifest.json');
+            // Create .nojekyll file to disable Jekyll processing on GitHub Pages
+            if (existsSync('.nojekyll')) {
+              copyFileSync('.nojekyll', 'dist/.nojekyll');
+            } else {
+              writeFileSync('dist/.nojekyll', '');
+            }
           }
         }
       ],

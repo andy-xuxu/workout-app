@@ -7,7 +7,15 @@
     <script>
         // Redirect to index.html for GitHub Pages SPA routing
         sessionStorage.redirect = location.href;
-        location.replace(location.pathname.split('/').slice(0, -1).join('/') + '/index.html');
+        const basePath = '/workout-app/';
+        const path = location.pathname;
+        // Ensure we redirect to the base path + index.html
+        if (path.startsWith(basePath)) {
+          location.replace(basePath + 'index.html');
+        } else {
+          // Fallback: go to base path
+          location.replace(basePath + 'index.html');
+        }
     </script>
 </head>
 <body>
