@@ -69,6 +69,29 @@ const updateSavedWorkout = (workoutId: string, updates: Partial<SavedWorkout>): 
   }
 };
 
+// Constants
+const BADGE_INLINE_STYLES: React.CSSProperties = {
+  textDecoration: 'none',
+  textShadow: 'none',
+  border: 'none',
+  borderBottom: 'none',
+  borderTop: 'none',
+  borderLeft: 'none',
+  borderRight: 'none',
+  outline: 'none',
+  WebkitTextStroke: '0',
+  backgroundClip: 'padding-box',
+  WebkitBackgroundClip: 'padding-box',
+  lineHeight: '1.3',
+  letterSpacing: '0.05em',
+  boxShadow: 'none',
+  WebkitFontSmoothing: 'antialiased',
+  MozOsxFontSmoothing: 'grayscale',
+  textRendering: 'optimizeSpeed',
+  transform: 'translateZ(0)',
+  willChange: 'auto',
+};
+
 // Helper functions
 const getIntensityBadgeClass = (intensity: 'Low' | 'Medium' | 'High'): string => {
   switch (intensity) {
@@ -98,14 +121,14 @@ const useIsMobile = (): boolean => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
     const checkMobile = () => {
-      const mediaQuery = window.matchMedia('(max-width: 768px)');
-      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       setIsMobile(mediaQuery.matches && hasTouch);
     };
 
     checkMobile();
-    const mediaQuery = window.matchMedia('(max-width: 768px)');
     const handleChange = () => checkMobile();
     
     // Modern browsers
@@ -253,6 +276,212 @@ const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 's
   );
 };
 
+// Workout Badges Component
+interface WorkoutBadgesProps {
+  tag: string;
+  intensity: 'Low' | 'Medium' | 'High';
+  categoryStyles: { bg: string; text: string };
+  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
+  variant?: 'default' | 'compact';
+}
+
+const WorkoutBadges: React.FC<WorkoutBadgesProps> = ({
+  tag,
+  intensity,
+  categoryStyles,
+  getIntensityBadgeClass,
+  variant = 'default',
+}) => {
+  const paddingClass = variant === 'compact' ? 'px-3 py-1.5' : 'px-3 py-1';
+  const roundedClass = variant === 'compact' ? 'rounded-xl' : 'rounded-lg';
+  const shadowClass = variant === 'compact' ? 'shadow-lg' : '';
+  
+  return (
+    <div className="flex items-center gap-3 mb-2">
+      <span className={`${paddingClass} ${categoryStyles.bg} ${categoryStyles.text} text-[10px] font-black ${roundedClass} uppercase select-none relative z-10 overflow-hidden ${shadowClass}`} style={BADGE_INLINE_STYLES}>
+        {tag}
+      </span>
+      <span className={`${paddingClass} ${getIntensityBadgeClass(intensity)} text-[10px] font-black ${roundedClass} uppercase tracking-widest select-none ${shadowClass}`}>
+        {intensity}
+      </span>
+    </div>
+  );
+};
+
+// Header Component
+interface HeaderProps {
+  onBack: () => void;
+  subtitle?: string;
+}
+
+const Header: React.FC<HeaderProps> = ({ onBack, subtitle }) => {
+  return (
+    <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
+      <div>
+        <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
+          PulseFit Pro
+        </h1>
+        {subtitle && <p className="text-gray-500 text-sm mt-2">{subtitle}</p>}
+      </div>
+      <button
+        onClick={onBack}
+        className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+      >
+        ← Back
+      </button>
+    </header>
+  );
+};
+
+// Workout Detail Modal Component
+interface WorkoutDetailModalProps {
+  workout: Workout;
+  onClose: () => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+}
+
+const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClose, getCategoryStyles }) => {
+  const styles = getCategoryStyles(workout.category);
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
+      <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
+        <button 
+          onClick={onClose} 
+          className="absolute top-6 right-6 z-20 p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="flex flex-col lg:flex-row overflow-y-auto">
+          <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-4 md:p-12 min-h-[400px] lg:min-h-[600px]">
+            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.gradient}`}></div>
+            
+            <div className="relative w-full h-full flex items-center justify-center">
+              {workout.gifUrl ? (
+                <img 
+                  src={workout.gifUrl} 
+                  alt={workout.name}
+                  className="max-w-full max-h-[500px] lg:max-h-[700px] object-contain rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
+                />
+              ) : (
+                <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
+                  <EmptyGifPlaceholder size="large" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:w-2/5 p-8 md:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
+            <div className="mb-12">
+              <div className="flex items-center gap-4 mb-6">
+                <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${styles.gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
+                <span className={`text-xs font-black ${styles.text} uppercase tracking-[0.3em]`}>
+                  {workout.tag}
+                </span>
+              </div>
+              <h2 className="text-5xl font-black mb-6 leading-none tracking-tighter">{workout.name}</h2>
+              <p className="text-gray-400 text-base leading-relaxed font-medium">{workout.description}</p>
+            </div>
+
+            <div className="mb-12">
+              <h4 className={`text-xs font-black ${styles.text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
+                TARGET MUSCLES
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                {workout.targetMuscles.map(m => (
+                  <span key={m} className="px-5 py-2.5 bg-black/40 text-gray-400 text-[10px] font-black rounded-xl border border-gray-800 uppercase tracking-tight">
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto pt-8 border-t border-gray-800/50">
+              <div className="text-[10px] font-black text-gray-500 tracking-widest uppercase">INTENSITY: {workout.intensity}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Workout List Card Component
+interface WorkoutListCardProps {
+  workout: Workout;
+  onClick: (workout: Workout) => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
+  isProminent?: boolean;
+  getTileRef?: (id: string) => (element: HTMLElement | null) => void;
+}
+
+const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
+  workout,
+  onClick,
+  getCategoryStyles,
+  getIntensityBadgeClass,
+  isProminent = false,
+  getTileRef,
+}) => {
+  const styles = getCategoryStyles(workout.category);
+  
+  return (
+    <div 
+      ref={getTileRef ? getTileRef(workout.id) : undefined}
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
+        isProminent ? 'scale-105' : ''
+      }`}
+      style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
+      onClick={() => onClick(workout)}
+    >
+      <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
+        {workout.gifUrl ? (
+          <img 
+            src={workout.gifUrl} 
+            alt={workout.name}
+            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+            loading="lazy"
+          />
+        ) : (
+          <EmptyGifPlaceholder />
+        )}
+      </div>
+      <div className="flex-1 flex flex-col justify-center">
+        <WorkoutBadges
+          tag={workout.tag}
+          intensity={workout.intensity}
+          categoryStyles={styles}
+          getIntensityBadgeClass={getIntensityBadgeClass}
+        />
+        <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
+        <div className="flex flex-wrap gap-2">
+          {workout.targetMuscles.map(m => (
+            <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+              {m}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center md:pr-4">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick(workout);
+          }}
+          className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Sortable Workout Card Component
 interface SortableWorkoutCardProps {
   workout: Workout;
@@ -314,7 +543,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
       className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-4 p-4 relative select-none ${
         isDragging 
           ? 'shadow-2xl shadow-blue-500/30 cursor-grabbing' 
-          : 'cursor-grab hover:border-gray-700 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60'
+          : 'cursor-grab hover:border-gray-700 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-2xl hover:shadow-black/60'
       }`}
       {...attributes}
       {...listeners}
@@ -351,14 +580,12 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
       </button>
 
       <div className="flex-1 flex flex-col justify-center">
-        <div className="flex items-center gap-3 mb-2">
-          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed', transform: 'translateZ(0)', willChange: 'auto' }}>
-            {workout.tag}
-          </span>
-          <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
-            {workout.intensity}
-          </span>
-        </div>
+        <WorkoutBadges
+          tag={workout.tag}
+          intensity={workout.intensity}
+          categoryStyles={styles}
+          getIntensityBadgeClass={getIntensityBadgeClass}
+        />
         <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
         <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
         <div className="flex flex-wrap gap-2">
@@ -725,19 +952,7 @@ const App: React.FC = () => {
   if (appMode === 'saved') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-        <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
-              PulseFit Pro
-            </h1>
-          </div>
-          <button
-            onClick={handleBackToLanding}
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
-          >
-            ← Back
-          </button>
-        </header>
+        <Header onBack={handleBackToLanding} />
 
         <main className="max-w-7xl mx-auto">
           {savedWorkouts.length === 0 ? (
@@ -825,130 +1040,26 @@ const App: React.FC = () => {
 
         <main className="max-w-7xl mx-auto">
           <div className="space-y-4">
-            {viewedWorkout.workouts.map((workout) => {
-              const styles = getCategoryStyles(workout.category);
-              const isProminent = isMobile && prominentTileId === workout.id;
-              return (
-                <div 
-                  key={workout.id}
-                  ref={getTileRef(workout.id)}
-                  className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
-                    isProminent ? 'scale-105' : ''
-                  }`}
-                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
-                  onClick={() => setSelectedWorkout(workout)}
-                >
-                  <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
-                    {workout.gifUrl ? (
-                      <img 
-                        src={workout.gifUrl} 
-                        alt={workout.name}
-                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <EmptyGifPlaceholder />
-                    )}
-                  </div>
-                  <div className="flex-1 flex flex-col justify-center">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
-                        {workout.tag}
-                      </span>
-                      <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
-                        {workout.intensity}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-                    <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {workout.targetMuscles.map(m => (
-                        <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center md:pr-4">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedWorkout(workout);
-                      }}
-                      className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
-                    >
-                      View
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {viewedWorkout.workouts.map((workout) => (
+              <WorkoutListCard
+                key={workout.id}
+                workout={workout}
+                onClick={setSelectedWorkout}
+                getCategoryStyles={getCategoryStyles}
+                getIntensityBadgeClass={getIntensityBadgeClass}
+                isProminent={isMobile && prominentTileId === workout.id}
+                getTileRef={getTileRef}
+              />
+            ))}
           </div>
         </main>
 
         {selectedWorkout && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
-            <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
-              <button 
-                onClick={() => setSelectedWorkout(null)} 
-                className="absolute top-6 right-6 z-20 p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-
-              <div className="flex flex-col lg:flex-row overflow-y-auto">
-                <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-4 md:p-12 min-h-[400px] lg:min-h-[600px]">
-                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${getCategoryStyles(selectedWorkout.category).gradient}`}></div>
-                  
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    {selectedWorkout.gifUrl ? (
-                      <img 
-                        src={selectedWorkout.gifUrl} 
-                        alt={selectedWorkout.name}
-                        className="max-w-full max-h-[500px] lg:max-h-[700px] object-contain rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
-                      />
-                    ) : (
-                      <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                        <EmptyGifPlaceholder size="large" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="lg:w-2/5 p-8 md:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
-                  <div className="mb-12">
-                    <div className="flex items-center gap-4 mb-6">
-                       <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${getCategoryStyles(selectedWorkout.category).gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
-                       <span className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em]`}>
-                         {selectedWorkout.tag}
-                       </span>
-                    </div>
-                    <h2 className="text-5xl font-black mb-6 leading-none tracking-tighter">{selectedWorkout.name}</h2>
-                    <p className="text-gray-400 text-base leading-relaxed font-medium">{selectedWorkout.description}</p>
-                  </div>
-
-                  <div className="mb-12">
-                    <h4 className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
-                      TARGET MUSCLES
-                    </h4>
-                    <div className="flex flex-wrap gap-3">
-                      {selectedWorkout.targetMuscles.map(m => (
-                        <span key={m} className="px-5 py-2.5 bg-black/40 text-gray-400 text-[10px] font-black rounded-xl border border-gray-800 uppercase tracking-tight">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-auto pt-8 border-t border-gray-800/50">
-                    <div className="text-[10px] font-black text-gray-500 tracking-widest uppercase">INTENSITY: {selectedWorkout.intensity}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <WorkoutDetailModal
+            workout={selectedWorkout}
+            onClose={() => setSelectedWorkout(null)}
+            getCategoryStyles={getCategoryStyles}
+          />
         )}
       </div>
     );
@@ -956,19 +1067,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-      <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
-            PulseFit Pro
-          </h1>
-        </div>
-        <button
-          onClick={handleBackToLanding}
-          className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
-        >
-          ← Back
-        </button>
-      </header>
+      <Header onBack={handleBackToLanding} />
 
       {!isCreateMode && (
         <nav className="max-w-7xl mx-auto mb-10">
@@ -1088,77 +1187,27 @@ const App: React.FC = () => {
           </>
         )}
 
-        {isCreateMode && (
+        {isCreateMode && customWorkouts.length === 0 && (
           <div className="mb-8 p-4 bg-[#111111] border border-gray-800 rounded-2xl">
             <p className="text-gray-400 text-sm text-center">
-              {customWorkouts.length === 0 
-                ? 'Tap workouts below to add them to your custom routine'
-                : 'Continue selecting workouts below to add more to your custom routine'}
+              Tap workouts below to add them to your custom routine
             </p>
           </div>
         )}
 
         {appMode === 'view' ? (
           <div className="space-y-4">
-            {filteredWorkouts.map((workout) => {
-              const styles = getCategoryStyles(workout.category);
-              const isProminent = isMobile && prominentTileId === workout.id;
-
-              return (
-                <div 
-                  key={workout.id}
-                  ref={getTileRef(workout.id)}
-                  className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
-                    isProminent ? 'scale-105' : ''
-                  }`}
-                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
-                  onClick={() => setSelectedWorkout(workout)}
-                >
-                  <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
-                    {workout.gifUrl ? (
-                      <img 
-                        src={workout.gifUrl} 
-                        alt={workout.name}
-                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <EmptyGifPlaceholder />
-                    )}
-                  </div>
-                  <div className="flex-1 flex flex-col justify-center">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
-                        {workout.tag}
-                      </span>
-                      <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
-                        {workout.intensity}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-                    <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {workout.targetMuscles.map(m => (
-                        <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center md:pr-4">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedWorkout(workout);
-                      }}
-                      className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
-                    >
-                      View
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredWorkouts.map((workout) => (
+              <WorkoutListCard
+                key={workout.id}
+                workout={workout}
+                onClick={setSelectedWorkout}
+                getCategoryStyles={getCategoryStyles}
+                getIntensityBadgeClass={getIntensityBadgeClass}
+                isProminent={isMobile && prominentTileId === workout.id}
+                getTileRef={getTileRef}
+              />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1172,7 +1221,7 @@ const App: React.FC = () => {
                   key={workout.id}
                   ref={getTileRef(workout.id)}
                   onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => setSelectedWorkout(workout)}
-                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02] ${
+                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
                     isProminent ? 'scale-105' : ''
                   }`}
                   style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
@@ -1196,13 +1245,14 @@ const App: React.FC = () => {
                         <EmptyGifPlaceholder />
                       )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
-                    <div className="absolute top-4 left-4 flex gap-2">
-                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase shadow-lg relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
-                        {workout.tag}
-                      </span>
-                      <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
-                        {workout.intensity}
-                      </span>
+                    <div className="absolute top-4 left-4">
+                      <WorkoutBadges
+                        tag={workout.tag}
+                        intensity={workout.intensity}
+                        categoryStyles={styles}
+                        getIntensityBadgeClass={getIntensityBadgeClass}
+                        variant="compact"
+                      />
                     </div>
                   </div>
 
@@ -1288,68 +1338,11 @@ const App: React.FC = () => {
       )}
 
       {selectedWorkout && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
-          <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
-            <button 
-              onClick={() => setSelectedWorkout(null)} 
-              className="absolute top-6 right-6 z-20 p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div className="flex flex-col lg:flex-row overflow-y-auto">
-              <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-4 md:p-12 min-h-[400px] lg:min-h-[600px]">
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${getCategoryStyles(selectedWorkout.category).gradient}`}></div>
-                
-                <div className="relative w-full h-full flex items-center justify-center">
-                  {selectedWorkout.gifUrl ? (
-                    <img 
-                      src={selectedWorkout.gifUrl} 
-                      alt={selectedWorkout.name}
-                      className="max-w-full max-h-[500px] lg:max-h-[700px] object-contain rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
-                    />
-                  ) : (
-                    <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                      <EmptyGifPlaceholder size="large" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="lg:w-2/5 p-8 md:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
-                <div className="mb-12">
-                  <div className="flex items-center gap-4 mb-6">
-                     <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${getCategoryStyles(selectedWorkout.category).gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
-                     <span className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em]`}>
-                       {selectedWorkout.tag}
-                     </span>
-                  </div>
-                  <h2 className="text-5xl font-black mb-6 leading-none tracking-tighter">{selectedWorkout.name}</h2>
-                  <p className="text-gray-400 text-base leading-relaxed font-medium">{selectedWorkout.description}</p>
-                </div>
-
-                <div className="mb-12">
-                  <h4 className={`text-xs font-black ${getCategoryStyles(selectedWorkout.category).text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
-                    TARGET MUSCLES
-                  </h4>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedWorkout.targetMuscles.map(m => (
-                      <span key={m} className="px-5 py-2.5 bg-black/40 text-gray-400 text-[10px] font-black rounded-xl border border-gray-800 uppercase tracking-tight">
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-auto pt-8 border-t border-gray-800/50">
-                  <div className="text-[10px] font-black text-gray-500 tracking-widest uppercase">INTENSITY: {selectedWorkout.intensity}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <WorkoutDetailModal
+          workout={selectedWorkout}
+          onClose={() => setSelectedWorkout(null)}
+          getCategoryStyles={getCategoryStyles}
+        />
       )}
 
     </div>
