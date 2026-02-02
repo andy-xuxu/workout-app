@@ -538,6 +538,7 @@ interface WorkoutListCardProps {
   getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
   isProminent?: boolean;
   getTileRef?: (id: string) => (element: HTMLElement | null) => void;
+  showViewButton?: boolean;
 }
 
 const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
@@ -547,6 +548,7 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
   getIntensityBadgeClass,
   isProminent = false,
   getTileRef,
+  showViewButton = true,
 }) => {
   const styles = getCategoryStyles(workout.category);
   
@@ -587,17 +589,19 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           ))}
         </div>
       </div>
-      <div className="flex items-center md:pr-4">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick(workout);
-          }}
-          className="px-6 py-3 bg-gray-50 text-gray-800 text-[10px] font-black rounded-xl transition-all shadow-md hover:shadow-lg hover:bg-gray-100 active:scale-95 uppercase tracking-widest whitespace-nowrap"
-        >
-          View
-        </button>
-      </div>
+      {showViewButton && (
+        <div className="flex items-center md:pr-4">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(workout);
+            }}
+            className="px-6 py-3 bg-gray-50 text-gray-800 text-[10px] font-black rounded-xl transition-all shadow-md hover:shadow-lg hover:bg-gray-100 active:scale-95 uppercase tracking-widest whitespace-nowrap"
+          >
+            View
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -734,7 +738,7 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
                   </svg>
-                  <span>Hold to drag and drop to reorder your workout routine</span>
+                  <span>Drag any workout card to reorder</span>
                 </p>
               </div>
               <DndContext
@@ -746,7 +750,7 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
                   items={workouts.map(w => w.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-4" style={{ touchAction: 'pan-y' }}>
+                  <div className="space-y-4">
                     {workouts.map((workout) => (
                       <SortableWorkoutCard
                         key={workout.id}
@@ -794,30 +798,40 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
   } = useSortable({ id: workout.id });
 
   const styles = getCategoryStyles(workout.category);
+  const [wasDragging, setWasDragging] = useState(false);
+  
+  // Track dragging state to prevent card click
+  useEffect(() => {
+    if (isDragging) {
+      setWasDragging(true);
+    } else if (wasDragging) {
+      // Reset after a short delay to prevent click after drag
+      const timer = setTimeout(() => setWasDragging(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging, wasDragging]);
   
   // Build transform string properly
   let transformString: string | undefined = undefined;
   if (transform) {
     transformString = CSS.Transform.toString(transform);
     if (isDragging) {
-      transformString += ' scale(1.08)'; // Larger scale for better "pop up" effect
+      transformString += ' scale(1.05)'; // Slightly reduced scale for mobile
     }
   } else if (isDragging) {
-    transformString = 'scale(1.08)';
+    transformString = 'scale(1.05)';
   }
   
   const style: React.CSSProperties = {
-    transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
-    opacity: isDragging ? 0.9 : 1,
+    transition: isDragging ? 'none' : (transition || 'transform 200ms cubic-bezier(0.2, 0, 0, 1)'),
+    opacity: isDragging ? 0.95 : 1,
     zIndex: isDragging ? 9999 : 1,
-    touchAction: isDragging ? 'none' : 'pan-y', // Allow vertical scrolling when not dragging
-    userSelect: 'none', // Prevent iOS text selection/magnifying glass
-    WebkitUserSelect: 'none', // Safari prefix
-    WebkitTouchCallout: 'none', // Prevent iOS callout menu
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
   };
   
   // Only set transform when we have a value from @dnd-kit
-  // This ensures transforms are properly cleared when drag ends
   if (transformString) {
     style.transform = transformString;
   }
@@ -825,21 +839,27 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-4 p-4 relative select-none ${
-        isDragging 
-          ? 'shadow-2xl shadow-blue-500/30 cursor-grabbing' 
-          : 'cursor-grab hover:border-gray-700 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-2xl hover:shadow-black/60'
-      }`}
       {...attributes}
       {...listeners}
+      style={style}
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none cursor-grab active:cursor-grabbing ${
+        isDragging 
+          ? 'shadow-2xl shadow-blue-500/30 border-blue-500/50' 
+          : 'hover:border-gray-700'
+      }`}
+      onClick={(e) => {
+        // Don't trigger card click if we just finished dragging
+        if (!isDragging && !wasDragging) {
+          onClick(workout);
+        }
+      }}
     >
-      {/* Drag Handle Indicator */}
+      {/* Drag Handle - Visual Indicator */}
       <div
-        className="absolute top-4 left-4 z-10 p-2 text-gray-500 pointer-events-none"
-        aria-hidden="true"
+        className="absolute top-3 left-3 md:top-4 md:left-4 z-10 p-2 text-gray-400 rounded-lg transition-colors pointer-events-none"
+        aria-label="Drag to reorder"
       >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
         </svg>
       </div>
@@ -857,26 +877,30 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
         onTouchStart={(e) => {
           e.stopPropagation();
         }}
-        className="absolute top-4 right-4 z-20 p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white transition-colors touch-none"
+        onPointerDown={(e) => {
+          // Prevent drag when clicking remove button
+          e.stopPropagation();
+        }}
+        className="absolute top-3 right-3 md:top-4 md:right-4 z-20 p-2 md:p-2 bg-red-600/80 hover:bg-red-600 active:bg-red-700 rounded-lg text-white transition-colors touch-none min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label={`Remove ${workout.name}`}
       >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center pt-1">
         <WorkoutBadges
           tag={workout.tag}
           intensity={workout.intensity}
           categoryStyles={styles}
           getIntensityBadgeClass={getIntensityBadgeClass}
         />
-        <h3 className="text-xl font-bold mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-        <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
+        <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-3 md:mb-4 select-none line-clamp-2">{workout.description}</p>
         <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
-            <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+            <span key={m} className="px-2 md:px-3 py-1 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
               {m}
             </span>
           ))}
@@ -909,9 +933,10 @@ const App: React.FC = () => {
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
   // Custom activation constraint for touch that distinguishes scrolling from dragging
+  // Optimized to prevent accidental activation while scrolling
   const touchActivationConstraint = {
-    delay: 200, // User must hold for 200ms before drag activates (reduced for better mobile UX)
-    tolerance: 8, // Small tolerance - if finger moves more than 8px, cancel activation (scrolling involves continuous movement)
+    delay: 250, // Longer delay to prevent accidental drags during scroll
+    tolerance: 8, // Larger tolerance - requires more deliberate movement before activating
   };
 
   // Configure drag-and-drop sensors
@@ -921,7 +946,8 @@ const App: React.FC = () => {
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 15, // Minimum movement threshold before activating drag
+        distance: 10, // Increased distance to prevent accidental drags
+        delay: 150, // Add delay for pointer sensor too
       },
     }),
     useSensor(KeyboardSensor, {
@@ -1449,6 +1475,7 @@ const App: React.FC = () => {
                 getIntensityBadgeClass={getIntensityBadgeClass}
                 isProminent={isMobile && prominentTileId === workout.id}
                 getTileRef={getTileRef}
+                showViewButton={false}
               />
             ))}
           </div>
