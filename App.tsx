@@ -352,7 +352,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
 
       <div className="flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-3 mb-2">
-          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
+          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed', transform: 'translateZ(0)', willChange: 'auto' }}>
             {workout.tag}
           </span>
           <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -852,7 +852,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -1128,7 +1128,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 select-none`}>
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase select-none relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
@@ -1197,7 +1197,7 @@ const App: React.FC = () => {
                       )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                     <div className="absolute top-4 left-4 flex gap-2">
-                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase shadow-lg relative z-10 overflow-hidden`} style={{ textDecoration: 'none', textShadow: 'none', border: 'none', borderBottom: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', WebkitTextStroke: '0', backgroundClip: 'padding-box', WebkitBackgroundClip: 'padding-box', lineHeight: '1.3', letterSpacing: '0.05em', boxShadow: 'none', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeSpeed' }}>
                         {workout.tag}
                       </span>
                       <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
