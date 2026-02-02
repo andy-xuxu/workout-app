@@ -101,7 +101,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
     name: 'Cable Lateral Pulldowns',
     category: 'Back + Shoulders',
     tag: 'back',
-    gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/08/Cable-Rear-Pulldown.gif', 
+    gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif', 
     description: 'Width builder for the lats. Pull to the upper chest while keeping shoulders depressed.',
     targetMuscles: ['Lats', 'Middle Back', 'Biceps'],
     intensity: 'High'

@@ -104,10 +104,9 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30">
         <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-12">
             PulseFit Pro
           </h1>
-          <p className="text-gray-400 text-lg md:text-xl mb-12">Personal Technique Vault</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <button
@@ -152,7 +151,6 @@ const App: React.FC = () => {
           <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${isCreateMode ? 'from-orange-500 to-red-500' : getCategoryStyles(selectedCategory).gradient} bg-clip-text text-transparent inline-block transition-all duration-500`}>
             PulseFit Pro
           </h1>
-          <p className="text-gray-400 mt-1 text-base md:text-lg">Personal Technique Vault.</p>
         </div>
         <button
           onClick={handleBackToLanding}
