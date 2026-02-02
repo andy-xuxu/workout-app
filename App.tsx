@@ -790,9 +790,9 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   const styles = getCategoryStyles(workout.category);
 
   return (
-    <div className="w-full flex-shrink-0 flex items-center justify-center p-4 md:p-6" style={{ perspective: '1000px' }}>
+    <div className="w-full flex-shrink-0 flex items-center justify-center p-2 md:p-6" style={{ perspective: '1000px', maxHeight: '100%' }}>
       <div
-        className={`relative w-full max-w-md rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in ${
+        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col max-h-full ${
           isCompleted ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
         }`}
         style={{
@@ -807,11 +807,11 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         }}
       >
         {/* Category accent bar */}
-        <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient}`} />
+        <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
 
-        <div className="flex flex-col">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Image area - flashcard front */}
-          <div className="relative aspect-square bg-black/60">
+          <div className="relative bg-black/60 flex-shrink-0" style={{ aspectRatio: '1', maxHeight: '40vh' }}>
             {workout.gifUrl ? (
               <img
                 src={workout.gifUrl}
@@ -826,38 +826,34 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             )}
             {isCompleted && (
               <div className="absolute inset-0 bg-green-500/25 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300">
-                <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                  <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                  <svg className="w-8 h-8 md:w-10 md:h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               </div>
             )}
-            {/* Card number badge */}
-            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-gray-300 text-xs font-bold">
-              {index + 1} / {total}
-            </div>
           </div>
 
           {/* Content area - flashcard back */}
-          <div className="p-5 md:p-6 flex flex-col gap-4">
+          <div className="p-3 md:p-6 flex flex-col gap-2 md:gap-4 flex-1 min-h-0 overflow-y-auto">
             <div>
-              <span className={`inline-block px-2.5 py-1 ${styles.bg} text-[10px] font-black rounded-lg uppercase tracking-wider mb-2`}>
+              <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-1.5 md:mb-2`}>
                 {workout.tag}
               </span>
-              <h3 className="text-xl md:text-2xl font-bold leading-tight">{workout.name}</h3>
+              <h3 className="text-lg md:text-2xl font-bold leading-tight">{workout.name}</h3>
             </div>
-            <p className="text-gray-400 text-sm leading-relaxed line-clamp-2">{workout.description}</p>
-            <div className="flex flex-wrap gap-1.5">
+            <p className="text-gray-400 text-xs md:text-sm leading-relaxed line-clamp-2">{workout.description}</p>
+            <div className="flex flex-wrap gap-1 md:gap-1.5">
               {workout.targetMuscles.map((m) => (
-                <span key={m} className="px-2.5 py-1 bg-gray-800/60 text-gray-400 text-[10px] font-bold rounded-md">
+                <span key={m} className="px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-800/60 text-gray-400 text-[9px] md:text-[10px] font-bold rounded-md">
                   {m}
                 </span>
               ))}
             </div>
             <button
               onClick={onMarkComplete}
-              className={`mt-2 w-full py-4 rounded-xl text-base font-bold transition-all duration-200 active:scale-[0.98] ${
+              className={`mt-auto w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
                 isCompleted
                   ? 'bg-green-600 text-white cursor-default'
                   : 'bg-white text-black hover:bg-gray-100 shadow-lg'
@@ -865,7 +861,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             >
               {isCompleted ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Done
@@ -996,7 +992,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
             const isAnimatingOut = animatingOutId === workout.id;
             
             return (
-              <div key={workout.id} className="w-full flex-shrink-0 h-full overflow-y-auto">
+              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-center">
                 <ExerciseCard
                   workout={workout}
                   index={idx}
