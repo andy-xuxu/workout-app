@@ -502,19 +502,19 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
   const styles = getCategoryStyles(workout.category);
   
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
-      <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative max-h-screen md:max-h-[90vh] flex flex-col`}>
+    <div className="fixed inset-0 z-[70] flex items-start md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-0 md:p-6">
+      <div className={`bg-[#0d0d0d] border-t md:border border-gray-800 w-full h-full md:h-auto max-w-6xl md:rounded-[3rem] overflow-hidden shadow-2xl relative md:max-h-[90vh] flex flex-col`}>
         <button 
           onClick={onClose} 
-          className="absolute top-6 right-6 z-20 p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
+          className="absolute top-4 right-4 md:top-6 md:right-6 z-20 p-2.5 md:p-4 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800 shadow-xl"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
         <div className="flex flex-col lg:flex-row overflow-y-auto">
-          <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-4 md:p-12 min-h-[400px] lg:min-h-[600px]">
+          <div className="lg:w-3/5 bg-black flex flex-col items-center justify-center relative p-3 md:p-12 min-h-[250px] md:min-h-[400px] lg:min-h-[600px]">
             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.gradient}`}></div>
             
             <div className="relative w-full h-full flex items-center justify-center">
@@ -522,35 +522,35 @@ const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({ workout, onClos
                 <img 
                   src={workout.gifUrl} 
                   alt={workout.name}
-                  className="max-w-full max-h-[500px] lg:max-h-[700px] object-contain rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
+                  className="max-w-full max-h-[300px] md:max-h-[500px] lg:max-h-[700px] object-contain rounded-2xl md:rounded-[2.5rem] shadow-[0_20px_100px_rgba(0,0,0,0.9)] border border-gray-800/50"
                 />
               ) : (
-                <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
+                <div className="text-center p-6 md:p-12 bg-gray-900/20 rounded-2xl md:rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
                   <EmptyGifPlaceholder size="large" />
                 </div>
               )}
             </div>
           </div>
 
-          <div className="lg:w-2/5 p-8 md:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
-            <div className="mb-12">
-              <div className="flex items-center gap-4 mb-6">
-                <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${styles.gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
-                <span className={`text-xs font-black ${styles.text} uppercase tracking-[0.3em]`}>
+          <div className="lg:w-2/5 p-4 md:p-8 lg:p-16 flex flex-col bg-[#111111] border-t lg:border-t-0 lg:border-l border-gray-800/50">
+            <div className="mb-6 md:mb-12">
+              <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+                <span className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-gradient-to-br ${styles.gradient} shadow-[0_0_15px_rgba(0,0,0,0.5)]`} />
+                <span className={`text-[10px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em]`}>
                   {workout.tag}
                 </span>
               </div>
-              <h2 className="text-5xl font-black mb-6 leading-none tracking-tighter">{workout.name}</h2>
-              <p className="text-gray-400 text-base leading-relaxed font-medium">{workout.description}</p>
+              <h2 className="text-3xl md:text-5xl font-black mb-4 md:mb-6 leading-none tracking-tighter">{workout.name}</h2>
+              <p className="text-gray-400 text-sm md:text-base leading-relaxed font-medium">{workout.description}</p>
             </div>
 
-            <div className="mb-12">
-              <h4 className={`text-xs font-black ${styles.text} uppercase tracking-[0.3em] mb-6 border-b border-gray-800/50 pb-4`}>
+            <div className="mb-6 md:mb-12">
+              <h4 className={`text-[10px] md:text-xs font-black ${styles.text} uppercase tracking-[0.3em] mb-4 md:mb-6 border-b border-gray-800/50 pb-3 md:pb-4`}>
                 TARGET MUSCLES
               </h4>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 {workout.targetMuscles.map(m => (
-                  <span key={m} className="px-5 py-2.5 bg-black/40 text-gray-400 text-[10px] font-black rounded-xl border border-gray-800 uppercase tracking-tight">
+                  <span key={m} className="px-3 py-1.5 md:px-5 md:py-2.5 bg-black/40 text-gray-400 text-[9px] md:text-[10px] font-black rounded-lg md:rounded-xl border border-gray-800 uppercase tracking-tight">
                     {m}
                   </span>
                 ))}
@@ -1397,6 +1397,7 @@ const App: React.FC = () => {
   const [activeWorkout, setActiveWorkout] = useState<{ name: string; workouts: Workout[] } | null>(null);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showWorkoutCompletion, setShowWorkoutCompletion] = useState(false);
+  const [wasDrawerOpenBeforeModal, setWasDrawerOpenBeforeModal] = useState(false);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1405,6 +1406,30 @@ const App: React.FC = () => {
   const openDrawer = () => setIsDrawerOpen(true);
   const closeDrawer = () => setIsDrawerOpen(false);
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
+
+  // Handler to open workout detail modal and close drawer
+  const handleOpenWorkoutDetail = (workout: Workout) => {
+    setWasDrawerOpenBeforeModal(true);
+    closeDrawer();
+    setSelectedWorkout(workout);
+  };
+
+  // Handler to open workout detail modal (not from drawer)
+  const handleOpenWorkoutDetailFromGrid = (workout: Workout) => {
+    setWasDrawerOpenBeforeModal(false);
+    setSelectedWorkout(workout);
+  };
+
+  // Handler to close workout detail modal and reopen drawer if it was open
+  const handleCloseWorkoutDetail = () => {
+    setSelectedWorkout(null);
+    if (wasDrawerOpenBeforeModal && isCreateMode) {
+      setWasDrawerOpenBeforeModal(false);
+      openDrawer();
+    } else {
+      setWasDrawerOpenBeforeModal(false);
+    }
+  };
 
 
   // Get unique tags from workout library
@@ -1508,6 +1533,7 @@ const App: React.FC = () => {
     setActiveWorkout(null);
     setCompletedExercises(new Set());
     setShowWorkoutCompletion(false);
+    setWasDrawerOpenBeforeModal(false);
     closeDrawer();
   };
 
@@ -1909,7 +1935,7 @@ const App: React.FC = () => {
         {selectedWorkout && (
           <WorkoutDetailModal
             workout={selectedWorkout}
-            onClose={() => setSelectedWorkout(null)}
+            onClose={handleCloseWorkoutDetail}
             getCategoryStyles={getCategoryStyles}
           />
         )}
@@ -2013,7 +2039,7 @@ const App: React.FC = () => {
                 <div 
                   key={workout.id}
                   ref={getTileRef(workout.id)}
-                  onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => setSelectedWorkout(workout)}
+                  onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => handleOpenWorkoutDetailFromGrid(workout)}
                   className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : isProminent ? 'border-2 border-gray-600' : styles.border} rounded-[2rem] overflow-hidden flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
                     isProminent ? 'scale-[1.03] shadow-xl shadow-black/50 z-10' : 'shadow-sm scale-100'
                   }`}
@@ -2065,7 +2091,7 @@ const App: React.FC = () => {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedWorkout(workout);
+                            handleOpenWorkoutDetailFromGrid(workout);
                           }}
                           className="w-full py-4 bg-gray-50 text-gray-800 text-[10px] font-black rounded-2xl transition-all shadow-md hover:shadow-lg hover:bg-gray-100 active:scale-95 uppercase tracking-widest text-center"
                         >
@@ -2152,7 +2178,7 @@ const App: React.FC = () => {
       {selectedWorkout && (
         <WorkoutDetailModal
           workout={selectedWorkout}
-          onClose={() => setSelectedWorkout(null)}
+          onClose={handleCloseWorkoutDetail}
           getCategoryStyles={getCategoryStyles}
         />
       )}
@@ -2178,7 +2204,7 @@ const App: React.FC = () => {
           onClose={closeDrawer}
           workouts={customWorkouts}
           onRemove={handleRemoveWorkout}
-          onClick={setSelectedWorkout}
+          onClick={handleOpenWorkoutDetail}
           onSave={handleSaveWorkout}
           onClear={handleClearCustomWorkout}
           onReorder={handleReorderWorkouts}
