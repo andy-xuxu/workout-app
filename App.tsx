@@ -756,8 +756,8 @@ const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
-        tolerance: 5,
+        delay: 150,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -902,6 +902,9 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    WebkitUserSelect: 'none' as const,
+    userSelect: 'none' as const,
+    WebkitTouchCallout: 'none' as const,
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -913,11 +916,26 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
     onClick(workout);
   };
 
+  // Create listeners that exclude the remove button
+  const dragListeners = {
+    ...listeners,
+    onPointerDown: (e: React.PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button[aria-label*="Remove"]')) {
+        e.preventDefault();
+        return;
+      }
+      listeners?.onPointerDown?.(e);
+    },
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
+      {...dragListeners}
+      onClick={handleClick}
       className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col gap-3 md:gap-4 p-4 md:p-4 relative select-none ${
         isDragging 
           ? 'cursor-grabbing z-30 scale-95 border-2 border-white/50 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
@@ -930,6 +948,9 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
           e.stopPropagation();
           onRemove(workout.id);
         }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
         className="absolute top-3 right-3 md:top-4 md:right-4 z-20 p-2 md:p-2 bg-red-600/80 hover:bg-red-600 active:bg-red-700 rounded-lg text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label={`Remove ${workout.name}`}
         style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}
@@ -940,10 +961,7 @@ const WorkoutRoutineCard: React.FC<WorkoutRoutineCardProps> = ({
       </button>
 
       <div 
-        {...listeners}
-        onClick={handleClick}
-        className="flex-1 flex flex-col justify-center pt-1 cursor-grab active:cursor-grabbing"
-        style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
+        className="flex-1 flex flex-col justify-center pt-1"
       >
         <WorkoutBadges
           tag={workout.tag}
