@@ -24,7 +24,7 @@ export const WORKOUT_LIBRARY: Workout[] = [
   },
   {
     id: 'ca-3',
-    name: 'Cable Overhead Extensions',
+    name: 'Cable Tricep Extensions',
     category: 'Chest + Arms',
     tag: 'Triceps',
     gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/04/Cable-Rope-Overhead-Triceps-Extension.gif', 

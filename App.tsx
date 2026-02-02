@@ -297,7 +297,7 @@ const WorkoutBadges: React.FC<WorkoutBadgesProps> = ({
   const shadowClass = variant === 'compact' ? 'shadow-lg' : '';
   
   return (
-    <div className="flex items-center gap-3 mb-2">
+    <div className="flex items-center gap-3 mb-3">
       <span className={`${paddingClass} ${categoryStyles.bg} ${categoryStyles.text} text-[10px] font-black ${roundedClass} uppercase select-none relative z-10 overflow-hidden ${shadowClass}`} style={BADGE_INLINE_STYLES}>
         {tag}
       </span>
@@ -457,9 +457,9 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           categoryStyles={styles}
           getIntensityBadgeClass={getIntensityBadgeClass}
         />
-        <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-        <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
-        <div className="flex flex-wrap gap-2">
+        <h3 className="text-xl font-bold mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
+        <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
             <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
               {m}
@@ -473,12 +473,178 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
             e.stopPropagation();
             onClick(workout);
           }}
-          className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
+          className="px-6 py-3 bg-gray-50 text-gray-800 text-[10px] font-black rounded-xl transition-all shadow-md hover:shadow-lg hover:bg-gray-100 active:scale-95 uppercase tracking-widest whitespace-nowrap"
         >
           View
         </button>
       </div>
     </div>
+  );
+};
+
+// Floating Action Button Component
+interface FloatingActionButtonProps {
+  count: number;
+  onClick: () => void;
+}
+
+const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ count, onClick }) => {
+  if (count === 0) return null;
+
+  return (
+    <button
+      onClick={onClick}
+      className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center group"
+      aria-label={`View routine (${count} ${count === 1 ? 'workout' : 'workouts'})`}
+    >
+      <svg className="w-8 h-8 md:w-10 md:h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      {count > 0 && (
+        <span className="absolute -top-2 -right-2 bg-white text-black text-xs font-black rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-[#0a0a0a]">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </button>
+  );
+};
+
+// Workout Routine Drawer Component
+interface WorkoutRoutineDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  workouts: Workout[];
+  onRemove: (workoutId: string) => void;
+  onClick: (workout: Workout) => void;
+  onSave: () => void;
+  onClear: () => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  sensors: ReturnType<typeof useSensors>;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
+  hasWorkoutChanges: boolean;
+  editingWorkoutId: string | null;
+  isMobile: boolean;
+}
+
+const WorkoutRoutineDrawer: React.FC<WorkoutRoutineDrawerProps> = ({
+  isOpen,
+  onClose,
+  workouts,
+  onRemove,
+  onClick,
+  onSave,
+  onClear,
+  onDragEnd,
+  sensors,
+  getCategoryStyles,
+  getIntensityBadgeClass,
+  hasWorkoutChanges,
+  editingWorkoutId,
+  isMobile,
+}) => {
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      
+      {/* Drawer */}
+      <div
+        className={`fixed top-0 right-0 h-full ${
+          isMobile ? 'w-full' : 'w-full max-w-md'
+        } bg-[#0d0d0d] border-l border-gray-800 z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+          <h2 className="text-2xl font-bold">Your Routine</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close drawer"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 p-6 border-b border-gray-800">
+          <button
+            onClick={onSave}
+            disabled={editingWorkoutId && !hasWorkoutChanges}
+            className={`flex-1 px-6 py-2.5 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
+              editingWorkoutId && !hasWorkoutChanges
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
+          >
+            Save
+          </button>
+          <button
+            onClick={onClear}
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+          >
+            Clear
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {workouts.length === 0 ? (
+            <div className="text-center py-16">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p className="text-gray-400 text-lg mb-2">No workouts added yet</p>
+              <p className="text-gray-500 text-sm">Tap workouts below to add them to your routine</p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 p-3 bg-[#111111] border border-gray-800 rounded-xl">
+                <p className="text-gray-400 text-sm text-center flex items-center justify-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
+                  <span>Hold to drag and drop to reorder your workout routine</span>
+                </p>
+              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onDragEnd}
+              >
+                <SortableContext
+                  items={workouts.map(w => w.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4" style={{ touchAction: 'pan-y' }}>
+                    {workouts.map((workout) => (
+                      <SortableWorkoutCard
+                        key={workout.id}
+                        workout={workout}
+                        onRemove={onRemove}
+                        onClick={onClick}
+                        getCategoryStyles={getCategoryStyles}
+                        getIntensityBadgeClass={getIntensityBadgeClass}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -586,9 +752,9 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
           categoryStyles={styles}
           getIntensityBadgeClass={getIntensityBadgeClass}
         />
-        <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
-        <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
-        <div className="flex flex-wrap gap-2">
+        <h3 className="text-xl font-bold mb-3 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
+        <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
             <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
               {m}
@@ -612,9 +778,15 @@ const App: React.FC = () => {
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [originalWorkout, setOriginalWorkout] = useState<{ workouts: Workout[]; name: string } | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
+
+  // Drawer handlers
+  const openDrawer = () => setIsDrawerOpen(true);
+  const closeDrawer = () => setIsDrawerOpen(false);
+  const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
   // Configure drag-and-drop sensors
   const sensors = useSensors(
@@ -703,8 +875,9 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutToggle = (workout: Workout) => {
+    const wasSelected = customWorkouts.some(w => w.id === workout.id);
     setCustomWorkouts(prev =>
-      prev.some(w => w.id === workout.id)
+      wasSelected
         ? prev.filter(w => w.id !== workout.id)
         : [workout, ...prev]
     );
@@ -721,6 +894,7 @@ const App: React.FC = () => {
     setSelectedTag(null);
     setEditingWorkoutId(null);
     setOriginalWorkout(null);
+    closeDrawer();
   };
 
   const handleBackToLanding = () => {
@@ -730,6 +904,7 @@ const App: React.FC = () => {
     setEditingWorkoutId(null);
     setViewingWorkoutId(null);
     setOriginalWorkout(null);
+    closeDrawer();
   };
 
   const handleClearCustomWorkout = () => {
@@ -848,6 +1023,7 @@ const App: React.FC = () => {
     }
     setSavedWorkouts(loadSavedWorkouts());
     closeSaveModal();
+    closeDrawer();
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -980,7 +1156,7 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-2 md:pr-4">
                     <button
                       onClick={() => handleViewSavedWorkout(savedWorkout.id)}
-                      className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                      className="px-6 py-3 bg-gray-50 hover:bg-gray-100 text-gray-800 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap"
                     >
                       View
                     </button>
@@ -1094,105 +1270,36 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto">
         {isCreateMode && (
-          <>
-            <div 
-              className={`mb-8 transition-all duration-300 ease-in-out ${
-                customWorkouts.length > 0 
-                  ? 'opacity-100 max-h-[2000px] pointer-events-auto' 
-                  : 'opacity-0 max-h-0 pointer-events-none overflow-hidden'
-              }`}
-            >
-              <div className="flex justify-end items-center gap-3 mb-6">
-                <button
-                  onClick={handleSaveWorkout}
-                  disabled={editingWorkoutId && !hasWorkoutChanges}
-                  className={`px-6 py-2.5 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
-                    editingWorkoutId && !hasWorkoutChanges
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  }`}
-                >
-                  Save
-                  </button>
+          <nav className="max-w-7xl mx-auto mb-10">
+            <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setSelectedTag(null)}
+                className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
+                  selectedTag === null
+                    ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                    : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                }`}
+              >
+                All
+              </button>
+              {availableTags.map((tag) => {
+                const isActive = selectedTag?.toLowerCase() === tag.toLowerCase();
+                return (
                   <button
-                    onClick={handleClearCustomWorkout}
-                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                    key={tag}
+                    onClick={() => setSelectedTag(isActive ? null : tag)}
+                    className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 capitalize ${
+                      isActive
+                        ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
+                        : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
+                    }`}
                   >
-                    Clear
+                    {tag}
                   </button>
-                </div>
-                <div className="mb-4 p-3 bg-[#111111] border border-gray-800 rounded-xl">
-                  <p className="text-gray-400 text-sm text-center flex items-center justify-center gap-1">
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                    </svg>
-                    <span>Hold to drag and drop to reorder your workout routine</span>
-                  </p>
-                </div>
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={customWorkouts.map(w => w.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-4 mb-8" style={{ touchAction: 'pan-y' }}>
-                      {customWorkouts.map((workout) => (
-                        <SortableWorkoutCard
-                          key={workout.id}
-                          workout={workout}
-                          onRemove={handleRemoveWorkout}
-                          onClick={setSelectedWorkout}
-                          getCategoryStyles={getCategoryStyles}
-                          getIntensityBadgeClass={getIntensityBadgeClass}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </div>
-
-            <nav className="max-w-7xl mx-auto mb-10">
-              <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
-                <button
-                  onClick={() => setSelectedTag(null)}
-                  className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 ${
-                    selectedTag === null
-                      ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
-                      : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                  }`}
-                >
-                  All
-                </button>
-                {availableTags.map((tag) => {
-                  const isActive = selectedTag?.toLowerCase() === tag.toLowerCase();
-                  return (
-                    <button
-                      key={tag}
-                      onClick={() => setSelectedTag(isActive ? null : tag)}
-                      className={`px-6 py-2.5 rounded-2xl whitespace-nowrap transition-all border text-sm font-bold active:scale-95 flex-shrink-0 capitalize ${
-                        isActive
-                          ? `bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]`
-                          : `bg-transparent text-gray-500 border-gray-800 hover:border-gray-600`
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          </>
-        )}
-
-        {isCreateMode && customWorkouts.length === 0 && (
-          <div className="mb-8 p-4 bg-[#111111] border border-gray-800 rounded-2xl">
-            <p className="text-gray-400 text-sm text-center">
-              Tap workouts below to add them to your custom routine
-            </p>
-          </div>
+                );
+              })}
+            </div>
+          </nav>
         )}
 
         {appMode === 'view' ? (
@@ -1257,11 +1364,11 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
+                    <h3 className="text-xl font-bold mb-4 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
                     
                     <div className="mt-auto">
                       {isCreateMode ? (
-                        <div className={`w-full py-4 ${isSelected ? 'bg-orange-600' : 'bg-gray-700'} text-white text-[10px] font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-center`}>
+                        <div className={`w-full py-2.5 mt-2 ${isSelected ? 'bg-orange-600' : 'bg-gray-700'} text-white text-[10px] font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-center`}>
                           {isSelected ? 'Selected' : 'Tap to Add'}
                         </div>
                       ) : (
@@ -1270,7 +1377,7 @@ const App: React.FC = () => {
                             e.stopPropagation();
                             setSelectedWorkout(workout);
                           }}
-                          className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest text-center`}
+                          className="w-full py-4 bg-gray-50 text-gray-800 text-[10px] font-black rounded-2xl transition-all shadow-md hover:shadow-lg hover:bg-gray-100 active:scale-95 uppercase tracking-widest text-center"
                         >
                           View
                         </button>
@@ -1342,6 +1449,34 @@ const App: React.FC = () => {
           workout={selectedWorkout}
           onClose={() => setSelectedWorkout(null)}
           getCategoryStyles={getCategoryStyles}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      {isCreateMode && (
+        <FloatingActionButton
+          count={customWorkouts.length}
+          onClick={toggleDrawer}
+        />
+      )}
+
+      {/* Workout Routine Drawer */}
+      {isCreateMode && (
+        <WorkoutRoutineDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          workouts={customWorkouts}
+          onRemove={handleRemoveWorkout}
+          onClick={setSelectedWorkout}
+          onSave={handleSaveWorkout}
+          onClear={handleClearCustomWorkout}
+          onDragEnd={handleDragEnd}
+          sensors={sensors}
+          getCategoryStyles={getCategoryStyles}
+          getIntensityBadgeClass={getIntensityBadgeClass}
+          hasWorkoutChanges={hasWorkoutChanges}
+          editingWorkoutId={editingWorkoutId}
+          isMobile={isMobile}
         />
       )}
 
