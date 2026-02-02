@@ -333,6 +333,127 @@ const Header: React.FC<HeaderProps> = ({ onBack, subtitle }) => {
   );
 };
 
+// Save Workout Bottom Sheet Component (Mobile)
+interface SaveWorkoutBottomSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  workoutNameInput: string;
+  setWorkoutNameInput: (value: string) => void;
+  onSave: () => void;
+  editingWorkoutId: string | null;
+  hasChanges: boolean;
+}
+
+const SaveWorkoutBottomSheet: React.FC<SaveWorkoutBottomSheetProps> = ({
+  isOpen,
+  onClose,
+  workoutNameInput,
+  setWorkoutNameInput,
+  onSave,
+  editingWorkoutId,
+  hasChanges,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Trigger animation after mount
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+      // Focus input after animation starts
+      setTimeout(() => {
+        inputRef.current?.focus();
+        // Scroll input into view when keyboard appears
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] transition-opacity duration-300 ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      
+      {/* Bottom Sheet */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-[60] bg-[#0d0d0d] border-t border-gray-800 rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+          isVisible ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {/* Drag Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-12 h-1 bg-gray-700 rounded-full" />
+        </div>
+
+        <div className="px-6 pb-6 pt-2">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">
+              {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <input
+            ref={inputRef}
+            type="text"
+            value={workoutNameInput}
+            onChange={(e) => setWorkoutNameInput(e.target.value)}
+            placeholder="Enter workout name..."
+            maxLength={50}
+            className="w-full px-4 py-4 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4 text-base"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onSave();
+              }
+            }}
+          />
+
+          <div className="flex gap-3">
+            <button
+              onClick={onSave}
+              disabled={!workoutNameInput.trim() || (editingWorkoutId && !hasChanges)}
+              className={`flex-1 px-6 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 ${
+                editingWorkoutId && !hasChanges
+                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-700 disabled:cursor-not-allowed'
+              }`}
+            >
+              {editingWorkoutId ? 'Update' : 'Save'}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-base font-bold transition-all active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // Workout Detail Modal Component
 interface WorkoutDetailModalProps {
   workout: Workout;
@@ -792,13 +913,13 @@ const App: React.FC = () => {
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 300, // Increased delay to prevent accidental drag during scrolling
-        tolerance: 12, // Increased tolerance to prevent accidental scroll
+        delay: 400, // Delay threshold to prevent accidental drag during scrolling
+        tolerance: 15, // Minimum movement threshold to prevent accidental scroll
       },
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 12, // Require more movement before activating drag
+        distance: 15, // Minimum movement threshold before activating drag
       },
     }),
     useSensor(KeyboardSensor, {
@@ -941,6 +1062,8 @@ const App: React.FC = () => {
 
   const handleSaveWorkout = () => {
     if (customWorkouts.length === 0) return;
+    // Close drawer before showing save modal/bottom sheet
+    closeDrawer();
     setShowSaveModal(true);
     // If editing an existing workout, pre-fill the name
     if (editingWorkoutId) {
@@ -1391,57 +1514,72 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* Mobile: Bottom Sheet, Desktop: Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4 overflow-y-auto">
-          <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative mt-8 md:mt-0 mb-8 md:mb-0">
-            <button 
-              onClick={closeSaveModal}
-              className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="p-6 md:p-8">
-              <h2 className="text-xl md:text-2xl font-bold mb-6">
-                {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
-              </h2>
-              <input
-                type="text"
-                value={workoutNameInput}
-                onChange={(e) => setWorkoutNameInput(e.target.value)}
-                placeholder="Enter workout name..."
-                maxLength={50}
-                className="w-full px-4 py-3 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4 text-base"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSaveWorkoutConfirm();
-                  }
-                }}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSaveWorkoutConfirm}
-                  disabled={!workoutNameInput.trim() || (editingWorkoutId && !hasChanges)}
-                  className={`flex-1 px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
-                    editingWorkoutId && !hasChanges
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-700 disabled:cursor-not-allowed'
-                  }`}
-                >
-                  {editingWorkoutId ? 'Update' : 'Save'}
-                </button>
-                <button
+        <>
+          {isMobile ? (
+            <SaveWorkoutBottomSheet
+              isOpen={showSaveModal}
+              onClose={closeSaveModal}
+              workoutNameInput={workoutNameInput}
+              setWorkoutNameInput={setWorkoutNameInput}
+              onSave={handleSaveWorkoutConfirm}
+              editingWorkoutId={editingWorkoutId}
+              hasChanges={hasChanges}
+            />
+          ) : (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4 overflow-y-auto">
+              <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
+                <button 
                   onClick={closeSaveModal}
-                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                  className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
                 >
-                  Cancel
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
+                <div className="p-6 md:p-8">
+                  <h2 className="text-xl md:text-2xl font-bold mb-6">
+                    {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
+                  </h2>
+                  <input
+                    type="text"
+                    value={workoutNameInput}
+                    onChange={(e) => setWorkoutNameInput(e.target.value)}
+                    placeholder="Enter workout name..."
+                    maxLength={50}
+                    className="w-full px-4 py-3 bg-[#111111] border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 mb-4 text-base"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSaveWorkoutConfirm();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSaveWorkoutConfirm}
+                      disabled={!workoutNameInput.trim() || (editingWorkoutId && !hasChanges)}
+                      className={`flex-1 px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
+                        editingWorkoutId && !hasChanges
+                          ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-700 disabled:cursor-not-allowed'
+                      }`}
+                    >
+                      {editingWorkoutId ? 'Update' : 'Save'}
+                    </button>
+                    <button
+                      onClick={closeSaveModal}
+                      className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {selectedWorkout && (
