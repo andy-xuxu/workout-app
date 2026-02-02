@@ -207,17 +207,31 @@
       
       // Error handling
       window.addEventListener('error', (e) => {
-        console.error('Global error:', e.error);
+        console.error('Global error:', e.error, e.filename, e.lineno, e.colno);
         const root = document.getElementById('root');
         if (root && root.children.length === 1) {
-          root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">Error Loading App</h1><p style="color: #888;">Check console for details</p><pre style="color: #666; font-size: 12px; margin-top: 20px; text-align: left;">' + (e.error ? e.error.toString() : 'Unknown error') + '</pre></div></div>';
+          const errorMsg = e.error ? e.error.toString() : (e.message || 'Unknown error');
+          const errorDetails = e.filename ? `File: ${e.filename}:${e.lineno}:${e.colno}` : '';
+          root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">Error Loading App</h1><p style="color: #888;">' + errorMsg + '</p><p style="color: #666; font-size: 12px; margin-top: 10px;">' + errorDetails + '</p><pre style="color: #666; font-size: 12px; margin-top: 20px; text-align: left; background: #111; padding: 10px; border-radius: 4px; overflow: auto; max-width: 600px; margin: 20px auto 0;">' + (e.error && e.error.stack ? e.error.stack : String(e.error || e.message)) + '</pre></div></div>';
         }
       });
       
       // Unhandled promise rejection
       window.addEventListener('unhandledrejection', (e) => {
         console.error('Unhandled promise rejection:', e.reason);
+        const root = document.getElementById('root');
+        if (root && root.children.length === 1) {
+          root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">Error Loading App</h1><p style="color: #888;">Promise rejection: ' + (e.reason ? e.reason.toString() : 'Unknown') + '</p></div></div>';
+        }
       });
+      
+      // Timeout check - if app doesn't load in 10 seconds, show error
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.children.length === 1 && root.children[0].textContent && root.children[0].textContent.includes('Loading')) {
+          root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">App Failed to Load</h1><p style="color: #888;">The app is taking too long to load. Please check the browser console for errors.</p><p style="color: #666; font-size: 12px; margin-top: 20px;">Path: ' + window.location.pathname + '</p><p style="color: #666; font-size: 12px;">Scripts loaded: ' + document.querySelectorAll(\'script[type="module"]\').length + '</p></div></div>';
+        }
+      }, 10000);
       
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -229,6 +243,22 @@
       
       // Debug: Log when script loads
       console.log('Index.html script loaded, base path:', window.location.pathname);
+      
+      // Check if module script loads
+      window.addEventListener('DOMContentLoaded', () => {
+        const moduleScripts = document.querySelectorAll('script[type="module"]');
+        console.log('Module scripts found:', moduleScripts.length);
+        moduleScripts.forEach((script, i) => {
+          console.log(`Script ${i}:`, script.src || script.getAttribute('src'));
+          script.addEventListener('error', (e) => {
+            console.error('Script failed to load:', script.src || script.getAttribute('src'), e);
+            const root = document.getElementById('root');
+            if (root && root.children.length === 1) {
+              root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">Script Failed to Load</h1><p style="color: #888;">Failed to load: ' + (script.src || script.getAttribute('src') || 'unknown') + '</p><p style="color: #666; font-size: 12px; margin-top: 20px;">Check browser console and network tab for details.</p></div></div>';
+            }
+          });
+        });
+      });
     </script>
     <script type="module" src="./index.tsx"></script>
 </body>
