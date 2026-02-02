@@ -556,7 +556,6 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
       className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
         isProminent ? 'scale-105' : ''
       }`}
-      style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
       onClick={() => onClick(workout)}
     >
       <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
@@ -911,8 +910,8 @@ const App: React.FC = () => {
 
   // Custom activation constraint for touch that distinguishes scrolling from dragging
   const touchActivationConstraint = {
-    delay: 1000, // User must hold for 1000ms before drag activates
-    tolerance: 5, // Very small tolerance - if finger moves more than 5px, cancel activation (scrolling involves continuous movement)
+    delay: 200, // User must hold for 200ms before drag activates (reduced for better mobile UX)
+    tolerance: 8, // Small tolerance - if finger moves more than 8px, cancel activation (scrolling involves continuous movement)
   };
 
   // Configure drag-and-drop sensors
@@ -1194,7 +1193,7 @@ const App: React.FC = () => {
 
   if (appMode === 'landing') {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30">
+      <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
         <div className="max-w-4xl w-full text-center">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-12">
             PulseFit Pro
@@ -1467,7 +1466,6 @@ const App: React.FC = () => {
                   className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
                     isProminent ? 'scale-105' : ''
                   }`}
-                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
                 >
                   {isSelected && (
                     <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
