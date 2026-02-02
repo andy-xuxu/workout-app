@@ -811,19 +811,19 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Image area - flashcard front */}
-          <div className="relative bg-black/60 flex-shrink-0" style={{ aspectRatio: '1', maxHeight: '40vh' }}>
-            {workout.gifUrl ? (
-              <img
-                src={workout.gifUrl}
-                alt={workout.name}
-                className="w-full h-full object-contain p-2"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
+          <div className="relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(100%, 40vh)' }}>
+            <div className="absolute inset-0 flex items-center justify-center p-2">
+              {workout.gifUrl ? (
+                <img
+                  src={workout.gifUrl}
+                  alt={workout.name}
+                  className="max-w-full max-h-full object-contain"
+                  loading="lazy"
+                />
+              ) : (
                 <EmptyGifPlaceholder size="large" />
-              </div>
-            )}
+              )}
+            </div>
             {isCompleted && (
               <div className="absolute inset-0 bg-green-500/25 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300">
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
