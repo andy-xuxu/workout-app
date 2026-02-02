@@ -244,49 +244,49 @@ const App: React.FC = () => {
             PulseFit Pro
           </h1>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <button
               onClick={handleViewWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-[0.98]"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all hover:shadow-2xl hover:shadow-blue-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
             >
-              <div className="mb-6">
+              <div className="mb-6 w-full">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
                   <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">View Workouts</h2>
-                <p className="text-gray-500 text-sm">Browse exercises by category</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">View Workouts</h2>
+                <p className="text-gray-500 text-sm text-center">Browse exercises by category</p>
               </div>
             </button>
             
             <button
               onClick={handleCreateNewWorkout}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all hover:shadow-2xl hover:shadow-orange-500/20 active:scale-[0.98]"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-orange-500/50 transition-all hover:shadow-2xl hover:shadow-orange-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
             >
-              <div className="mb-6">
+              <div className="mb-6 w-full">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
                   <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">Create New Workout</h2>
-                <p className="text-gray-500 text-sm">Build your custom routine</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">Create New Workout</h2>
+                <p className="text-gray-500 text-sm text-center">Build your custom routine</p>
               </div>
             </button>
 
             <button
               onClick={handleViewSavedWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 transition-all hover:shadow-2xl hover:shadow-purple-500/20 active:scale-[0.98]"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-purple-500/50 transition-all hover:shadow-2xl hover:shadow-purple-500/20 active:scale-[0.98] min-w-0 w-full flex flex-col items-center"
             >
-              <div className="mb-6">
+              <div className="mb-6 w-full">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
                   <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold mb-2 whitespace-nowrap">My Saved Workouts</h2>
-                <p className="text-gray-500 text-sm">Access your routines</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center">My Saved Workouts</h2>
+                <p className="text-gray-500 text-sm text-center">Access your routines</p>
               </div>
             </button>
           </div>
@@ -556,8 +556,8 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors">{workout.name}</h3>
-                  <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium">{workout.description}</p>
+                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors text-center">{workout.name}</h3>
+                  <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium text-center">{workout.description}</p>
                   
                   <div className="mt-auto">
                     {isCreateMode ? (
@@ -570,7 +570,7 @@ const App: React.FC = () => {
                           e.stopPropagation();
                           setSelectedWorkout(workout);
                         }}
-                        className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest`}
+                        className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest text-center`}
                       >
                         View
                       </button>
