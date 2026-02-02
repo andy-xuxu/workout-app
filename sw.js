@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pulsefit-pro-v6';
+const CACHE_NAME = 'pulsefit-pro-v7';
 const BASE_PATH = '/workout-app/';
 const PRECACHE_ASSETS = [
   BASE_PATH,
