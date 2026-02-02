@@ -454,6 +454,89 @@ const SaveWorkoutBottomSheet: React.FC<SaveWorkoutBottomSheetProps> = ({
   );
 };
 
+// Checkmark Animation Component
+interface CheckmarkAnimationProps {
+  isVisible: boolean;
+  onComplete: () => void;
+}
+
+const CheckmarkAnimation: React.FC<CheckmarkAnimationProps> = ({ isVisible, onComplete }) => {
+  const [showCheckmark, setShowCheckmark] = useState(false);
+  const [showText, setShowText] = useState(false);
+
+  useEffect(() => {
+    if (isVisible) {
+      // Show checkmark after a brief delay
+      setTimeout(() => setShowCheckmark(true), 100);
+      // Show text after checkmark appears
+      setTimeout(() => setShowText(true), 400);
+      // Complete animation after 1.5 seconds
+      const timer = setTimeout(() => {
+        onComplete();
+      }, 1500);
+      return () => {
+        clearTimeout(timer);
+        setShowCheckmark(false);
+        setShowText(false);
+      };
+    }
+  }, [isVisible, onComplete]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 md:bg-black/80 backdrop-blur-sm md:backdrop-blur-md transition-opacity duration-300"
+      style={{
+        // Ensure it appears above all modals on mobile
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'none', // Prevent any touch interactions during animation
+      }}
+    >
+      <div className="relative flex flex-col items-center px-4">
+        {/* Animated circle background */}
+        <div 
+          className={`w-28 h-28 md:w-32 md:h-32 rounded-full bg-green-500 flex items-center justify-center transition-all duration-500 shadow-2xl ${
+            showCheckmark ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+          }`}
+          style={{
+            transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+            boxShadow: '0 20px 60px rgba(34, 197, 94, 0.4)'
+          }}
+        >
+          {/* Checkmark SVG */}
+          <svg
+            className={`w-14 h-14 md:w-16 md:h-16 text-white transition-all duration-300 ${
+              showCheckmark ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+            style={{
+              transitionDelay: showCheckmark ? '0.2s' : '0s'
+            }}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+        {/* Success text */}
+        <p 
+          className={`text-white text-xl md:text-2xl font-bold mt-8 md:mt-6 text-center transition-all duration-400 ${
+            showText ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+        >
+          Saved!
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Workout Detail Modal Component
 interface WorkoutDetailModalProps {
   workout: Workout;
@@ -934,6 +1017,7 @@ const App: React.FC = () => {
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [originalWorkout, setOriginalWorkout] = useState<{ workouts: Workout[]; name: string } | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showCheckmarkAnimation, setShowCheckmarkAnimation] = useState(false);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1187,6 +1271,15 @@ const App: React.FC = () => {
     setSavedWorkouts(loadSavedWorkouts());
     closeSaveModal();
     closeDrawer();
+    
+    // Show checkmark animation
+    setShowCheckmarkAnimation(true);
+  };
+
+  const handleCheckmarkAnimationComplete = () => {
+    setShowCheckmarkAnimation(false);
+    // Navigate to landing page
+    handleBackToLanding();
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -1639,6 +1732,12 @@ const App: React.FC = () => {
           getCategoryStyles={getCategoryStyles}
         />
       )}
+
+      {/* Checkmark Animation */}
+      <CheckmarkAnimation
+        isVisible={showCheckmarkAnimation}
+        onComplete={handleCheckmarkAnimationComplete}
+      />
 
       {/* Floating Action Button */}
       {isCreateMode && (
