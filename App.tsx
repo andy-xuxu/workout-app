@@ -829,6 +829,8 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none',
+    // iOS Safari touch handling - remove tap highlight
+    WebkitTapHighlightColor: 'transparent',
   };
   
   // Only set transform when we have a value from @dnd-kit
@@ -852,6 +854,10 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
         if (!isDragging && !wasDragging) {
           onClick(workout);
         }
+      }}
+      onTouchStart={(e) => {
+        // Allow touch events to propagate for drag handling on iOS
+        // Don't prevent default to allow @dnd-kit to handle drag
       }}
     >
       {/* Drag Handle - Visual Indicator */}
@@ -938,14 +944,14 @@ const App: React.FC = () => {
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
   // Custom activation constraint for touch that distinguishes scrolling from dragging
-  // Using delay-based activation to prevent accidental drags while allowing intentional drags
+  // Optimized for iOS Safari - delay with small tolerance for better compatibility
   const touchActivationConstraint = {
-    delay: 50, // Very short delay - allows quick drag activation on mobile
-    tolerance: 10, // Allow movement up to 10px before canceling - prevents accidental drags during scroll
+    delay: 300, // Delay before drag activates - prevents accidental drags during scroll
+    tolerance: 8, // Tolerance for movement - allows small movements without canceling drag on iOS
   };
 
   // Configure drag-and-drop sensors
-  // TouchSensor first for mobile devices, then PointerSensor for desktop
+  // TouchSensor first for mobile devices (especially iOS), then PointerSensor for desktop
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: touchActivationConstraint,
