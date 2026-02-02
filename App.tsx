@@ -1,4 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category, SavedWorkout } from './types';
 
@@ -92,6 +109,129 @@ const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 's
   );
 };
 
+// Sortable Workout Card Component
+interface SortableWorkoutCardProps {
+  workout: Workout;
+  onRemove: (workoutId: string) => void;
+  onClick: (workout: Workout) => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
+}
+
+const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
+  workout,
+  onRemove,
+  onClick,
+  getCategoryStyles,
+  getIntensityBadgeClass,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: workout.id });
+
+  const styles = getCategoryStyles(workout.category);
+  
+  // Build transform string properly
+  let transformString: string | undefined = undefined;
+  if (transform) {
+    transformString = CSS.Transform.toString(transform);
+    if (isDragging) {
+      transformString += ' scale(1.05)';
+    }
+  } else if (isDragging) {
+    transformString = 'scale(1.05)';
+  }
+  
+  const style: React.CSSProperties = {
+    transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
+    opacity: isDragging ? 0.85 : 1,
+    zIndex: isDragging ? 50 : 1,
+  };
+  
+  // Only set transform when we have a value from @dnd-kit
+  // This ensures transforms are properly cleared when drag ends
+  if (transformString) {
+    style.transform = transformString;
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 relative ${
+        isDragging 
+          ? 'shadow-2xl shadow-blue-500/20 cursor-grabbing' 
+          : 'cursor-grab hover:border-gray-700 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60'
+      }`}
+      {...attributes}
+      {...listeners}
+    >
+      {/* Remove Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(workout.id);
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        className="absolute top-4 right-4 z-20 p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white transition-colors"
+        aria-label={`Remove ${workout.name}`}
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div
+        onClick={() => onClick(workout)}
+        className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0"
+        onMouseDown={(e) => {
+          // Prevent drag when clicking on image
+          e.stopPropagation();
+        }}
+      >
+        {workout.gifUrl ? (
+          <img
+            src={workout.gifUrl}
+            alt={workout.name}
+            className="w-full h-full object-cover pointer-events-none"
+            loading="lazy"
+            draggable={false}
+          />
+        ) : (
+          <EmptyGifPlaceholder />
+        )}
+      </div>
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="flex items-center gap-3 mb-2">
+          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+            {workout.tag}
+          </span>
+          <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
+            {workout.intensity}
+          </span>
+        </div>
+        <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
+        <div className="flex flex-wrap gap-2">
+          {workout.targetMuscles.map(m => (
+            <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+              {m}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('landing');
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
@@ -105,6 +245,18 @@ const App: React.FC = () => {
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
 
   const isCreateMode = appMode === 'create';
+
+  // Configure drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement before activating drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Get unique tags from workout library
   const availableTags = useMemo(
@@ -188,6 +340,21 @@ const App: React.FC = () => {
   const handleClearCustomWorkout = () => {
     setCustomWorkouts([]);
     setEditingWorkoutId(null);
+  };
+
+  const handleRemoveWorkout = (workoutId: string) => {
+    setCustomWorkouts(prev => prev.filter(w => w.id !== workoutId));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setCustomWorkouts(items => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const closeSaveModal = () => {
@@ -617,50 +784,29 @@ const App: React.FC = () => {
                     Clear
                   </button>
                 </div>
-                <div className="space-y-4 mb-8">
-                  {customWorkouts.map((workout) => {
-                    const styles = getCategoryStyles(workout.category);
-                    return (
-                      <div
-                        key={workout.id}
-                        onClick={() => setSelectedWorkout(workout)}
-                        className="group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 transition-all duration-300 cursor-pointer active:scale-[0.98] hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60"
-                      >
-                        <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
-                          {workout.gifUrl ? (
-                            <img
-                              src={workout.gifUrl}
-                              alt={workout.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <EmptyGifPlaceholder />
-                          )}
-                        </div>
-                        <div className="flex-1 flex flex-col justify-center">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                              {workout.tag}
-                            </span>
-                            <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest`}>
-                              {workout.intensity}
-                            </span>
-                          </div>
-                          <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white">{workout.name}</h3>
-                          <p className="text-gray-400 text-sm mb-3">{workout.description}</p>
-                          <div className="flex flex-wrap gap-2">
-                            {workout.targetMuscles.map(m => (
-                              <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase">
-                                {m}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={customWorkouts.map(w => w.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-4 mb-8">
+                      {customWorkouts.map((workout) => (
+                        <SortableWorkoutCard
+                          key={workout.id}
+                          workout={workout}
+                          onRemove={handleRemoveWorkout}
+                          onClick={setSelectedWorkout}
+                          getCategoryStyles={getCategoryStyles}
+                          getIntensityBadgeClass={getIntensityBadgeClass}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </div>
 
             <nav className="max-w-7xl mx-auto mb-10">
