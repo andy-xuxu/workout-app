@@ -15,10 +15,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
+import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout } from './types';
 
-type AppMode = 'landing' | 'view' | 'create' | 'saved' | 'view-saved';
+type AppMode = 'landing' | 'view' | 'create' | 'saved' | 'view-saved' | 'workout-mode' | 'workout-active';
 
 const STORAGE_KEY = 'pulsefit-saved-workouts';
 
@@ -672,6 +672,449 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ count, onCl
   );
 };
 
+// Workout selection item - unified type for predefined or saved
+type WorkoutSelectionItem = { id: string; name: string; workouts: Workout[]; category?: Category };
+
+// Workout Mode Selection Component
+interface WorkoutModeSelectionProps {
+  predefinedWorkouts: PredefinedWorkout[];
+  savedWorkouts: SavedWorkout[];
+  onSelectWorkout: (item: WorkoutSelectionItem) => void;
+  onBack: () => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+}
+
+const WorkoutModeSelection: React.FC<WorkoutModeSelectionProps> = ({
+  predefinedWorkouts,
+  savedWorkouts,
+  onSelectWorkout,
+  onBack,
+  getCategoryStyles,
+}) => {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
+      <Header onBack={onBack} subtitle="Choose a routine to follow" />
+
+      <main className="max-w-4xl mx-auto">
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Predefined Workouts</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
+          {predefinedWorkouts.map((workout) => {
+            const styles = getCategoryStyles(workout.category);
+            return (
+              <button
+                key={workout.id}
+                onClick={() => onSelectWorkout(workout)}
+                className="group relative bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-gray-600 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] text-left overflow-hidden"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${styles.gradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
+                <div className="relative">
+                  <span className={`inline-block px-3 py-1 ${styles.bg} text-[10px] font-black rounded-lg uppercase mb-3`}>
+                    {workout.name}
+                  </span>
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-white transition-colors">{workout.name}</h3>
+                  <p className="text-gray-500 text-sm">
+                    {workout.workouts.length} {workout.workouts.length === 1 ? 'exercise' : 'exercises'}
+                  </p>
+                </div>
+                <div className="absolute top-4 right-4 opacity-40 group-hover:opacity-80">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {savedWorkouts.length > 0 && (
+          <>
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Custom Routines</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedWorkouts.map((workout) => (
+                <button
+                  key={workout.id}
+                  onClick={() => onSelectWorkout({ id: workout.id, name: workout.name, workouts: workout.workouts })}
+                  className="group relative bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-purple-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] text-left overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 opacity-5 group-hover:opacity-10 transition-opacity" />
+                  <div className="relative">
+                    <span className="inline-block px-3 py-1 bg-purple-600 text-[10px] font-black rounded-lg uppercase mb-3">
+                      Custom
+                    </span>
+                    <h3 className="text-xl font-bold mb-2 group-hover:text-white transition-colors">{workout.name}</h3>
+                    <p className="text-gray-500 text-sm">
+                      {workout.workouts.length} {workout.workouts.length === 1 ? 'exercise' : 'exercises'}
+                    </p>
+                  </div>
+                  <div className="absolute top-4 right-4 opacity-40 group-hover:opacity-80">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {savedWorkouts.length === 0 && (
+          <p className="text-gray-600 text-sm text-center py-8">Create custom routines in the workout builder to see them here.</p>
+        )}
+      </main>
+    </div>
+  );
+};
+
+// Exercise Card for Workout Carousel - Flashcard style
+interface ExerciseCardProps {
+  workout: Workout;
+  index: number;
+  total: number;
+  isCompleted: boolean;
+  isAnimatingOut: boolean;
+  onMarkComplete: () => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+}
+
+const ExerciseCard: React.FC<ExerciseCardProps> = ({
+  workout,
+  index,
+  total,
+  isCompleted,
+  isAnimatingOut,
+  onMarkComplete,
+  getCategoryStyles,
+}) => {
+  const styles = getCategoryStyles(workout.category);
+
+  return (
+    <div className="w-full flex-shrink-0 flex items-center justify-center p-4 md:p-6" style={{ perspective: '1000px' }}>
+      <div
+        className={`relative w-full max-w-md rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in ${
+          isCompleted ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
+        }`}
+        style={{
+          transform: isAnimatingOut
+            ? 'scale(0.6) rotateY(-20deg) translateZ(-300px) translateY(20px)'
+            : 'scale(1) rotateY(0deg) translateZ(0px) translateY(0px)',
+          opacity: isAnimatingOut ? 0 : 1,
+          transformStyle: 'preserve-3d',
+          transformOrigin: 'center center',
+          filter: isAnimatingOut ? 'blur(4px)' : 'blur(0px)',
+          zIndex: isAnimatingOut ? 0 : 1,
+        }}
+      >
+        {/* Category accent bar */}
+        <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient}`} />
+
+        <div className="flex flex-col">
+          {/* Image area - flashcard front */}
+          <div className="relative aspect-square bg-black/60">
+            {workout.gifUrl ? (
+              <img
+                src={workout.gifUrl}
+                alt={workout.name}
+                className="w-full h-full object-contain p-2"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <EmptyGifPlaceholder size="large" />
+              </div>
+            )}
+            {isCompleted && (
+              <div className="absolute inset-0 bg-green-500/25 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300">
+                <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                  <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            )}
+            {/* Card number badge */}
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-gray-300 text-xs font-bold">
+              {index + 1} / {total}
+            </div>
+          </div>
+
+          {/* Content area - flashcard back */}
+          <div className="p-5 md:p-6 flex flex-col gap-4">
+            <div>
+              <span className={`inline-block px-2.5 py-1 ${styles.bg} text-[10px] font-black rounded-lg uppercase tracking-wider mb-2`}>
+                {workout.tag}
+              </span>
+              <h3 className="text-xl md:text-2xl font-bold leading-tight">{workout.name}</h3>
+            </div>
+            <p className="text-gray-400 text-sm leading-relaxed line-clamp-2">{workout.description}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {workout.targetMuscles.map((m) => (
+                <span key={m} className="px-2.5 py-1 bg-gray-800/60 text-gray-400 text-[10px] font-bold rounded-md">
+                  {m}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={onMarkComplete}
+              className={`mt-2 w-full py-4 rounded-xl text-base font-bold transition-all duration-200 active:scale-[0.98] ${
+                isCompleted
+                  ? 'bg-green-600 text-white cursor-default'
+                  : 'bg-white text-black hover:bg-gray-100 shadow-lg'
+              }`}
+            >
+              {isCompleted ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Done
+                </span>
+              ) : (
+                'Mark Complete'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Workout Carousel Component
+interface WorkoutCarouselProps {
+  workoutName: string;
+  workouts: Workout[];
+  completedExercises: Set<string>;
+  onMarkComplete: (workoutId: string) => void;
+  onBack: () => void;
+  onWorkoutComplete: () => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+  isMobile: boolean;
+}
+
+const SWIPE_THRESHOLD = 50;
+
+const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
+  workoutName,
+  workouts,
+  completedExercises,
+  onMarkComplete,
+  onBack,
+  onWorkoutComplete,
+  getCategoryStyles,
+  isMobile,
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchDelta, setTouchDelta] = useState(0);
+  const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const total = workouts.length;
+  const completedCount = completedExercises.size;
+  const allComplete = total > 0 && completedCount === total;
+
+  useEffect(() => {
+    if (allComplete) {
+      onWorkoutComplete();
+    }
+  }, [allComplete, onWorkoutComplete]);
+
+  const goNext = useCallback(() => {
+    if (currentIndex < total - 1) {
+      setCurrentIndex((i) => i + 1);
+    }
+  }, [currentIndex, total]);
+
+  const goPrev = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex((i) => i - 1);
+    }
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') goPrev();
+      else if (e.key === 'ArrowRight') goNext();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goPrev, goNext]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+    setTouchDelta(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    setTouchDelta(e.touches[0].clientX - touchStart);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart === null) return;
+    if (touchDelta < -SWIPE_THRESHOLD) goNext();
+    else if (touchDelta > SWIPE_THRESHOLD) goPrev();
+    setTouchStart(null);
+    setTouchDelta(0);
+  };
+
+  const progressPercent = total > 0 ? (completedCount / total) * 100 : 0;
+
+  return (
+    <div className="h-screen flex flex-col bg-gradient-to-b from-[#0c0c0c] to-[#0a0a0a] text-white selection:bg-blue-500/30">
+      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3">
+        <button
+          onClick={onBack}
+          className="px-4 py-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors text-sm font-medium"
+        >
+          ← Back
+        </button>
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          <h1 className="text-base font-bold truncate w-full text-center max-w-[200px] md:max-w-sm">{workoutName}</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {completedCount} of {total} complete
+          </p>
+        </div>
+        <div className="w-16" />
+      </header>
+
+      <div className="flex-1 min-h-0 relative overflow-hidden flex items-center" style={{ perspective: '1000px' }}>
+        <div
+          ref={containerRef}
+          className="h-full w-full flex transition-transform duration-300 ease-out"
+          style={{
+            transform: `translateX(calc(-${currentIndex * 100}% + ${touchDelta}px))`,
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {workouts.map((workout, idx) => {
+            const isCurrentCard = idx === currentIndex;
+            const isAnimatingOut = animatingOutId === workout.id;
+            
+            return (
+              <div key={workout.id} className="w-full flex-shrink-0 h-full overflow-y-auto">
+                <ExerciseCard
+                  workout={workout}
+                  index={idx}
+                  total={total}
+                  isCompleted={completedExercises.has(workout.id)}
+                  isAnimatingOut={isAnimatingOut}
+                  onMarkComplete={() => {
+                    if (isCurrentCard && !isAnimatingOut) {
+                      setAnimatingOutId(workout.id);
+                      onMarkComplete(workout.id);
+                      setTimeout(() => {
+                        setAnimatingOutId(null);
+                        goNext();
+                      }, 500);
+                    }
+                  }}
+                  getCategoryStyles={getCategoryStyles}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex-shrink-0 p-4 pb-6 md:pb-6">
+        {/* Flashcard dots */}
+        <div className="flex justify-center gap-1.5 mb-4">
+          {Array.from({ length: total }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              className={`rounded-full transition-all duration-200 ${
+                i === currentIndex
+                  ? 'w-6 h-2 bg-white'
+                  : 'w-2 h-2' +
+                    (completedExercises.has(workouts[i].id) ? ' bg-green-500/70 hover:bg-green-500' : ' bg-gray-600 hover:bg-gray-500')
+              }`}
+              aria-label={`Go to exercise ${i + 1}`}
+            />
+          ))}
+        </div>
+        <div className="max-w-sm mx-auto flex items-center justify-between">
+          <button
+            onClick={goPrev}
+            disabled={currentIndex === 0}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-gray-800/50"
+            aria-label="Previous card"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="text-xs text-gray-500">Swipe or tap to navigate</span>
+          <button
+            onClick={goNext}
+            disabled={currentIndex === total - 1}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-gray-800/50"
+            aria-label="Next card"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Workout Completion Celebration Component
+interface WorkoutCompletionCelebrationProps {
+  workoutName: string;
+  exerciseCount: number;
+  onDone: () => void;
+}
+
+const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> = ({
+  workoutName,
+  exerciseCount,
+  onDone,
+}) => {
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setShowContent(true), 200);
+    return () => clearTimeout(t1);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+      <div className="flex flex-col items-center px-6 max-w-md text-center">
+        <div
+          className={`w-28 h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/30 transition-all duration-500 ${
+            showContent ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+          }`}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+        >
+          <svg className="w-14 h-14 md:w-16 md:h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className={`text-2xl md:text-3xl font-bold mt-8 mb-2 transition-all duration-500 delay-200 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          Workout Complete!
+        </h2>
+        <p className={`text-gray-400 mb-6 transition-all duration-500 delay-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+          You finished <strong className="text-white">{workoutName}</strong> — {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'} completed.
+        </p>
+        <button
+          onClick={onDone}
+          className={`px-8 py-4 bg-white text-black rounded-2xl font-bold transition-all duration-500 delay-400 hover:bg-gray-100 active:scale-95 ${showContent ? 'opacity-100' : 'opacity-0'}`}
+        >
+          Back to Workout Selection
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Workout Routine Drawer Component
 interface WorkoutRoutineDrawerProps {
   isOpen: boolean;
@@ -955,6 +1398,9 @@ const App: React.FC = () => {
   const [originalWorkout, setOriginalWorkout] = useState<{ workouts: Workout[]; name: string } | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showCheckmarkAnimation, setShowCheckmarkAnimation] = useState(false);
+  const [activeWorkout, setActiveWorkout] = useState<{ name: string; workouts: Workout[] } | null>(null);
+  const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [showWorkoutCompletion, setShowWorkoutCompletion] = useState(false);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1044,8 +1490,7 @@ const App: React.FC = () => {
   };
 
   const handleViewWorkouts = () => {
-    setAppMode('view');
-    setSelectedCategory('Chest + Arms');
+    setAppMode('workout-mode');
   };
 
   const handleCreateNewWorkout = () => {
@@ -1064,7 +1509,41 @@ const App: React.FC = () => {
     setEditingWorkoutId(null);
     setViewingWorkoutId(null);
     setOriginalWorkout(null);
+    setActiveWorkout(null);
+    setCompletedExercises(new Set());
+    setShowWorkoutCompletion(false);
     closeDrawer();
+  };
+
+  const handleStartWorkout = (item: WorkoutSelectionItem) => {
+    if (item.workouts.length === 0) return;
+    setActiveWorkout({ name: item.name, workouts: item.workouts });
+    setCompletedExercises(new Set());
+    setShowWorkoutCompletion(false);
+    setAppMode('workout-active');
+  };
+
+  const handleCompleteExercise = (workoutId: string) => {
+    setCompletedExercises((prev) => new Set(prev).add(workoutId));
+  };
+
+  const handleBackFromWorkoutActive = () => {
+    const hasProgress = completedExercises.size > 0;
+    if (hasProgress && !window.confirm('Leave workout? Your progress will not be saved.')) return;
+    setAppMode('workout-mode');
+    setActiveWorkout(null);
+    setCompletedExercises(new Set());
+  };
+
+  const handleWorkoutComplete = () => {
+    setShowWorkoutCompletion(true);
+  };
+
+  const handleWorkoutCompletionDone = () => {
+    setShowWorkoutCompletion(false);
+    setActiveWorkout(null);
+    setCompletedExercises(new Set());
+    setAppMode('workout-mode');
   };
 
   const handleClearCustomWorkout = () => {
@@ -1246,11 +1725,12 @@ const App: React.FC = () => {
               <div className="w-full flex flex-col items-center">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
                   <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Choose Workout</h2>
-                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Browse exercises by category</p>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Workout Mode</h2>
+                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Begin a workout</p>
               </div>
             </button>
             
@@ -1286,6 +1766,42 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (appMode === 'workout-mode') {
+    return (
+      <WorkoutModeSelection
+        predefinedWorkouts={PREDEFINED_WORKOUTS}
+        savedWorkouts={savedWorkouts}
+        onSelectWorkout={handleStartWorkout}
+        onBack={handleBackToLanding}
+        getCategoryStyles={getCategoryStyles}
+      />
+    );
+  }
+
+  if (appMode === 'workout-active' && activeWorkout) {
+    return (
+      <>
+        <WorkoutCarousel
+          workoutName={activeWorkout.name}
+          workouts={activeWorkout.workouts}
+          completedExercises={completedExercises}
+          onMarkComplete={handleCompleteExercise}
+          onBack={handleBackFromWorkoutActive}
+          onWorkoutComplete={handleWorkoutComplete}
+          getCategoryStyles={getCategoryStyles}
+          isMobile={isMobile}
+        />
+        {showWorkoutCompletion && (
+          <WorkoutCompletionCelebration
+            workoutName={activeWorkout.name}
+            exerciseCount={activeWorkout.workouts.length}
+            onDone={handleWorkoutCompletionDone}
+          />
+        )}
+      </>
     );
   }
 

@@ -1,4 +1,5 @@
 import { Workout } from './types';
+import type { Category } from './types';
 
 export const WORKOUT_LIBRARY: Workout[] = [
   // --- Chest + Arms Split ---
@@ -135,3 +136,31 @@ export const WORKOUT_LIBRARY: Workout[] = [
 ];
 
 export const CATEGORIES: string[] = ['All', 'Chest + Arms', 'Legs', 'Back + Shoulders'];
+
+export interface PredefinedWorkout {
+  id: string;
+  name: string;
+  category: Category;
+  workouts: Workout[];
+}
+
+export const PREDEFINED_WORKOUTS: PredefinedWorkout[] = [
+  {
+    id: 'predefined-chest-arms',
+    name: 'Chest + Arms',
+    category: 'Chest + Arms',
+    workouts: WORKOUT_LIBRARY.filter(w => w.category === 'Chest + Arms'),
+  },
+  {
+    id: 'predefined-legs',
+    name: 'Legs',
+    category: 'Legs',
+    workouts: WORKOUT_LIBRARY.filter(w => w.category === 'Legs'),
+  },
+  {
+    id: 'predefined-back-shoulders',
+    name: 'Back + Shoulders',
+    category: 'Back + Shoulders',
+    workouts: WORKOUT_LIBRARY.filter(w => w.category === 'Back + Shoulders'),
+  },
+];
