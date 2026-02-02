@@ -6,7 +6,7 @@
     <title>PulseFit Pro</title>
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="/workout-app/manifest.json">
     <meta name="theme-color" content="#0a0a0a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,7 +14,15 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Fallback if Tailwind CDN fails
+      if (typeof tailwind === 'undefined') {
+        console.warn('Tailwind CDN failed to load');
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -174,8 +182,43 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif;">
+        <div style="text-align: center;">
+          <div style="width: 50px; height: 50px; border: 4px solid #333; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+          <p>Loading PulseFit Pro...</p>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
     <script>
+      // Handle GitHub Pages redirect
+      (function() {
+        const redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+      
+      // Error handling
+      window.addEventListener('error', (e) => {
+        console.error('Global error:', e.error);
+        const root = document.getElementById('root');
+        if (root && root.children.length === 1) {
+          root.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: Inter, sans-serif; padding: 20px; text-align: center;"><div><h1 style="color: #ef4444; margin-bottom: 20px;">Error Loading App</h1><p style="color: #888;">Check console for details</p><pre style="color: #666; font-size: 12px; margin-top: 20px; text-align: left;">' + (e.error ? e.error.toString() : 'Unknown error') + '</pre></div></div>';
+        }
+      });
+      
+      // Unhandled promise rejection
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled promise rejection:', e.reason);
+      });
+      
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           // Use base path for GitHub Pages
@@ -183,6 +226,9 @@
           navigator.serviceWorker.register(basePath + 'sw.js').catch(err => console.log('SW registration failed:', err));
         });
       }
+      
+      // Debug: Log when script loads
+      console.log('Index.html script loaded, base path:', window.location.pathname);
     </script>
 <script type="module" src="/index.tsx"></script>
 </body>

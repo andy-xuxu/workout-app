@@ -1,9 +1,10 @@
-const CACHE_NAME = 'pulsefit-pro-v5';
+const CACHE_NAME = 'pulsefit-pro-v6';
+const BASE_PATH = '/workout-app/';
 const PRECACHE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './sw.js',
+  BASE_PATH,
+  BASE_PATH + 'index.html',
+  BASE_PATH + 'manifest.json',
+  BASE_PATH + 'sw.js',
 ];
 
 // Install event: cache core assets
