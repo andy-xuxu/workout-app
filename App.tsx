@@ -285,17 +285,20 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
   if (transform) {
     transformString = CSS.Transform.toString(transform);
     if (isDragging) {
-      transformString += ' scale(1.05)';
+      transformString += ' scale(1.08)'; // Larger scale for better "pop up" effect
     }
   } else if (isDragging) {
-    transformString = 'scale(1.05)';
+    transformString = 'scale(1.08)';
   }
   
   const style: React.CSSProperties = {
     transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
-    opacity: isDragging ? 0.85 : 1,
-    zIndex: isDragging ? 50 : 1,
-    touchAction: isDragging ? 'none' : 'pan-y', // Allow vertical scrolling when not dragging
+    opacity: isDragging ? 0.9 : 1,
+    zIndex: isDragging ? 9999 : 1,
+    touchAction: 'none', // Prevent scrolling and text selection on mobile
+    userSelect: 'none', // Prevent iOS text selection/magnifying glass
+    WebkitUserSelect: 'none', // Safari prefix
+    WebkitTouchCallout: 'none', // Prevent iOS callout menu
   };
   
   // Only set transform when we have a value from @dnd-kit
@@ -308,9 +311,9 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-4 p-4 relative ${
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-4 p-4 relative select-none ${
         isDragging 
-          ? 'shadow-2xl shadow-blue-500/20 cursor-grabbing' 
+          ? 'shadow-2xl shadow-blue-500/30 cursor-grabbing' 
           : 'cursor-grab hover:border-gray-700 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60'
       }`}
       {...attributes}
@@ -390,8 +393,8 @@ const App: React.FC = () => {
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200, // 200ms delay before activation on touch
-        tolerance: 5, // 5px tolerance for touch movement
+        delay: 150, // Shorter delay for more responsive dragging
+        tolerance: 8, // Increased tolerance to prevent accidental scroll
       },
     }),
     useSensor(PointerSensor, {
@@ -1036,7 +1039,7 @@ const App: React.FC = () => {
                     items={customWorkouts.map(w => w.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-4 mb-8">
+                    <div className="space-y-4 mb-8" style={{ touchAction: 'pan-y' }}>
                       {customWorkouts.map((workout) => (
                         <SortableWorkoutCard
                           key={workout.id}
