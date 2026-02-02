@@ -1,4 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES } from './constants';
 import { Workout, Category, SavedWorkout } from './types';
 
@@ -51,6 +68,170 @@ const updateSavedWorkout = (workoutId: string, updates: Partial<SavedWorkout>): 
   }
 };
 
+// Helper functions
+const getIntensityBadgeClass = (intensity: 'Low' | 'Medium' | 'High'): string => {
+  switch (intensity) {
+    case 'Low':
+      return 'bg-green-600 text-white';
+    case 'Medium':
+      return 'bg-yellow-600 text-white';
+    case 'High':
+      return 'bg-red-600 text-white';
+  }
+};
+
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
+};
+
+// Empty GIF placeholder component
+const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 'small' }) => {
+  const iconSize = size === 'large' ? 'w-12 h-12' : 'w-8 h-8';
+  const textSize = size === 'large' ? 'text-sm' : 'text-[9px]';
+  
+  return (
+    <div className={`w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2`}>
+      <svg className={`${iconSize} opacity-20`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <span className={`${textSize} font-black uppercase tracking-widest text-center px-4`}>
+        {size === 'large' ? 'Technique Clip Awaiting' : 'Technique Coming Soon'}
+      </span>
+    </div>
+  );
+};
+
+// Sortable Workout Card Component
+interface SortableWorkoutCardProps {
+  workout: Workout;
+  onRemove: (workoutId: string) => void;
+  onClick: (workout: Workout) => void;
+  getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
+  getIntensityBadgeClass: (intensity: 'Low' | 'Medium' | 'High') => string;
+}
+
+const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
+  workout,
+  onRemove,
+  onClick,
+  getCategoryStyles,
+  getIntensityBadgeClass,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: workout.id });
+
+  const styles = getCategoryStyles(workout.category);
+  
+  // Build transform string properly
+  let transformString: string | undefined = undefined;
+  if (transform) {
+    transformString = CSS.Transform.toString(transform);
+    if (isDragging) {
+      transformString += ' scale(1.05)';
+    }
+  } else if (isDragging) {
+    transformString = 'scale(1.05)';
+  }
+  
+  const style: React.CSSProperties = {
+    transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
+    opacity: isDragging ? 0.85 : 1,
+    zIndex: isDragging ? 50 : 1,
+  };
+  
+  // Only set transform when we have a value from @dnd-kit
+  // This ensures transforms are properly cleared when drag ends
+  if (transformString) {
+    style.transform = transformString;
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 relative ${
+        isDragging 
+          ? 'shadow-2xl shadow-blue-500/20 cursor-grabbing' 
+          : 'cursor-grab hover:border-gray-700 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60'
+      }`}
+      {...attributes}
+      {...listeners}
+    >
+      {/* Remove Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(workout.id);
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        className="absolute top-4 right-4 z-20 p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white transition-colors"
+        aria-label={`Remove ${workout.name}`}
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div
+        onClick={() => onClick(workout)}
+        className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0"
+        onMouseDown={(e) => {
+          // Prevent drag when clicking on image
+          e.stopPropagation();
+        }}
+      >
+        {workout.gifUrl ? (
+          <img
+            src={workout.gifUrl}
+            alt={workout.name}
+            className="w-full h-full object-cover pointer-events-none"
+            loading="lazy"
+            draggable={false}
+          />
+        ) : (
+          <EmptyGifPlaceholder />
+        )}
+      </div>
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="flex items-center gap-3 mb-2">
+          <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+            {workout.tag}
+          </span>
+          <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
+            {workout.intensity}
+          </span>
+        </div>
+        <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+        <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
+        <div className="flex flex-wrap gap-2">
+          {workout.targetMuscles.map(m => (
+            <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+              {m}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('landing');
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
@@ -62,40 +243,58 @@ const App: React.FC = () => {
   const [workoutNameInput, setWorkoutNameInput] = useState('');
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
-  
+
   const isCreateMode = appMode === 'create';
 
-  // Get unique tags from workout library
-  const availableTags = Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort();
+  // Configure drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement before activating drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  const filteredWorkouts = isCreateMode
-    ? selectedTag
-      ? WORKOUT_LIBRARY.filter(w => w.tag.toLowerCase() === selectedTag.toLowerCase())
-      : WORKOUT_LIBRARY
-    : selectedCategory === 'All' 
-      ? WORKOUT_LIBRARY 
+  // Get unique tags from workout library
+  const availableTags = useMemo(
+    () => Array.from(new Set(WORKOUT_LIBRARY.map(w => w.tag))).sort(),
+    []
+  );
+
+  const filteredWorkouts = useMemo(() => {
+    if (isCreateMode) {
+      return selectedTag
+        ? WORKOUT_LIBRARY.filter(w => w.tag.toLowerCase() === selectedTag.toLowerCase())
+        : WORKOUT_LIBRARY;
+    }
+    return selectedCategory === 'All'
+      ? WORKOUT_LIBRARY
       : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
+  }, [isCreateMode, selectedTag, selectedCategory]);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
       case 'Chest + Arms': 
         return { 
           gradient: 'from-blue-500 to-cyan-400',
-          border: 'border-blue-500/20', 
+          border: 'border-2 border-blue-500/20', 
           text: 'text-white', 
           bg: 'bg-blue-600' 
         };
       case 'Legs': 
         return { 
           gradient: 'from-emerald-500 to-green-400',
-          border: 'border-emerald-500/20', 
+          border: 'border-2 border-emerald-500/20', 
           text: 'text-white', 
           bg: 'bg-emerald-600' 
         };
       case 'Back + Shoulders': 
         return { 
           gradient: 'from-purple-600 to-pink-500',
-          border: 'border-purple-500/20', 
+          border: 'border-2 border-purple-500/20', 
           text: 'text-white', 
           bg: 'bg-purple-600' 
         };
@@ -103,7 +302,7 @@ const App: React.FC = () => {
       default:
         return { 
           gradient: 'from-gray-600 to-gray-400',
-          border: 'border-gray-800', 
+          border: 'border-2 border-gray-800', 
           text: 'text-white', 
           bg: 'bg-gray-700' 
         };
@@ -111,22 +310,11 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutToggle = (workout: Workout) => {
-    if (customWorkouts.some(w => w.id === workout.id)) {
-      setCustomWorkouts(customWorkouts.filter(w => w.id !== workout.id));
-    } else {
-      setCustomWorkouts([...customWorkouts, workout]);
-    }
-  };
-
-  const handleCreateModeToggle = () => {
-    if (isCreateMode) {
-      setCustomWorkouts([]);
-      setEditingWorkoutId(null);
-      setAppMode('view');
-    } else {
-      setAppMode('create');
-      setEditingWorkoutId(null);
-    }
+    setCustomWorkouts(prev =>
+      prev.some(w => w.id === workout.id)
+        ? prev.filter(w => w.id !== workout.id)
+        : [...prev, workout]
+    );
   };
 
   const handleViewWorkouts = () => {
@@ -154,6 +342,27 @@ const App: React.FC = () => {
     setEditingWorkoutId(null);
   };
 
+  const handleRemoveWorkout = (workoutId: string) => {
+    setCustomWorkouts(prev => prev.filter(w => w.id !== workoutId));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setCustomWorkouts(items => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const closeSaveModal = () => {
+    setShowSaveModal(false);
+    setWorkoutNameInput('');
+    setEditingWorkoutId(null);
+  };
+
   const handleSaveWorkout = () => {
     if (customWorkouts.length === 0) return;
     setShowSaveModal(true);
@@ -168,8 +377,7 @@ const App: React.FC = () => {
 
   const handleSaveWorkoutConfirm = () => {
     const name = workoutNameInput.trim();
-    if (!name || name.length === 0) return;
-    if (name.length > 50) return;
+    if (!name || name.length === 0 || name.length > 50) return;
 
     if (editingWorkoutId) {
       // Update existing workout
@@ -177,9 +385,6 @@ const App: React.FC = () => {
         name,
         workouts: [...customWorkouts]
       });
-      setSavedWorkouts(loadSavedWorkouts());
-      setShowSaveModal(false);
-      setWorkoutNameInput('');
       // Keep editingWorkoutId set so subsequent saves continue to update the same workout
     } else {
       // Create new workout
@@ -190,10 +395,9 @@ const App: React.FC = () => {
         createdAt: Date.now()
       };
       saveWorkoutToStorage(newWorkout);
-      setSavedWorkouts(loadSavedWorkouts());
-      setShowSaveModal(false);
-      setWorkoutNameInput('');
     }
+    setSavedWorkouts(loadSavedWorkouts());
+    closeSaveModal();
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -234,18 +438,6 @@ const App: React.FC = () => {
   useEffect(() => {
     setSavedWorkouts(loadSavedWorkouts());
   }, []);
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-  };
 
   if (appMode === 'landing') {
     return (
@@ -426,23 +618,14 @@ const App: React.FC = () => {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
-                        <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
-                      </div>
+                      <EmptyGifPlaceholder />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                     <div className="absolute top-4 left-4 flex gap-2">
                        <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                         {workout.tag}
                       </span>
-                      <span className={`px-3 py-1.5 ${
-                        workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                        workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                        'bg-red-600 text-white'
-                      } text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                      <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
                         {workout.intensity}
                       </span>
                     </div>
@@ -495,7 +678,7 @@ const App: React.FC = () => {
                       />
                     ) : (
                       <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                        <p className="text-gray-500 font-black text-sm uppercase tracking-widest">Technique Clip Awaiting</p>
+                        <EmptyGifPlaceholder size="large" />
                       </div>
                     )}
                   </div>
@@ -580,14 +763,19 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto">
         {isCreateMode && (
           <>
-            {customWorkouts.length > 0 && (
-              <div className="mb-8">
-                <div className="flex justify-end items-center gap-3 mb-6">
-                  <button
-                    onClick={handleSaveWorkout}
-                    className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
-                  >
-                    Save
+            <div 
+              className={`mb-8 transition-all duration-300 ease-in-out ${
+                customWorkouts.length > 0 
+                  ? 'opacity-100 max-h-[2000px] pointer-events-auto' 
+                  : 'opacity-0 max-h-0 pointer-events-none overflow-hidden'
+              }`}
+            >
+              <div className="flex justify-end items-center gap-3 mb-6">
+                <button
+                  onClick={handleSaveWorkout}
+                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                >
+                  Save
                   </button>
                   <button
                     onClick={handleClearCustomWorkout}
@@ -596,60 +784,30 @@ const App: React.FC = () => {
                     Clear
                   </button>
                 </div>
-                <div className="space-y-4 mb-8">
-                  {customWorkouts.map((workout) => {
-                    const styles = getCategoryStyles(workout.category);
-                    return (
-                      <div
-                        key={workout.id}
-                        onClick={() => setSelectedWorkout(workout)}
-                        className="group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 transition-all duration-300 cursor-pointer active:scale-[0.98] hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60"
-                      >
-                        <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
-                          {workout.gifUrl ? (
-                            <img
-                              src={workout.gifUrl}
-                              alt={workout.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-800">
-                              <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 flex flex-col justify-center">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                              {workout.tag}
-                            </span>
-                            <span className={`px-3 py-1 ${
-                              workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                              workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                              'bg-red-600 text-white'
-                            } text-[10px] font-black rounded-lg uppercase tracking-widest`}>
-                              {workout.intensity}
-                            </span>
-                          </div>
-                          <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white">{workout.name}</h3>
-                          <p className="text-gray-400 text-sm mb-3">{workout.description}</p>
-                          <div className="flex flex-wrap gap-2">
-                            {workout.targetMuscles.map(m => (
-                              <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase">
-                                {m}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={customWorkouts.map(w => w.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-4 mb-8">
+                      {customWorkouts.map((workout) => (
+                        <SortableWorkoutCard
+                          key={workout.id}
+                          workout={workout}
+                          onRemove={handleRemoveWorkout}
+                          onClick={setSelectedWorkout}
+                          getCategoryStyles={getCategoryStyles}
+                          getIntensityBadgeClass={getIntensityBadgeClass}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </div>
-            )}
 
             <nav className="max-w-7xl mx-auto mb-10">
               <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
@@ -684,15 +842,13 @@ const App: React.FC = () => {
           </>
         )}
 
-        {isCreateMode && customWorkouts.length === 0 && (
-          <div className="mb-8 p-6 bg-[#111111] border border-gray-800 rounded-2xl flex items-center justify-center text-center">
-            <p className="text-gray-400 text-lg mb-2 mx-auto">Tap workouts below to add them to your custom routine</p>
-          </div>
-        )}
-
-        {isCreateMode && customWorkouts.length > 0 && (
+        {isCreateMode && (
           <div className="mb-8 p-4 bg-[#111111] border border-gray-800 rounded-2xl">
-            <p className="text-gray-400 text-sm text-center">Continue selecting workouts below to add more to your custom routine</p>
+            <p className="text-gray-400 text-sm text-center">
+              {customWorkouts.length === 0 
+                ? 'Tap workouts below to add them to your custom routine'
+                : 'Continue selecting workouts below to add more to your custom routine'}
+            </p>
           </div>
         )}
 
@@ -705,7 +861,7 @@ const App: React.FC = () => {
               <div 
                 key={workout.id}
                 onClick={isCreateMode ? () => handleWorkoutToggle(workout) : undefined}
-                className={`group relative bg-[#111111] border ${isSelected ? 'border-orange-500 border-2' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
+                className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
               >
                 {isSelected && (
                   <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
@@ -722,24 +878,15 @@ const App: React.FC = () => {
                       className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                       loading="lazy"
                     />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-800 gap-2">
-                      <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Technique Coming Soon</span>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyGifPlaceholder />
+                    )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
                   <div className="absolute top-4 left-4 flex gap-2">
                      <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                       {workout.tag}
                     </span>
-                    <span className={`px-3 py-1.5 ${
-                      workout.intensity === 'Low' ? 'bg-green-600 text-white' :
-                      workout.intensity === 'Medium' ? 'bg-yellow-600 text-white' :
-                      'bg-red-600 text-white'
-                    } text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                    <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
                       {workout.intensity}
                     </span>
                   </div>
@@ -777,11 +924,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-3xl transition-all p-4">
           <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
             <button 
-              onClick={() => {
-                setShowSaveModal(false);
-                setWorkoutNameInput('');
-                setEditingWorkoutId(null);
-              }}
+              onClick={closeSaveModal}
               className="absolute top-6 right-6 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -809,17 +952,13 @@ const App: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveWorkoutConfirm}
-                  disabled={!workoutNameInput.trim() || workoutNameInput.trim().length === 0}
+                  disabled={!workoutNameInput.trim()}
                   className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
                 >
                   {editingWorkoutId ? 'Update' : 'Save'}
                 </button>
                 <button
-                  onClick={() => {
-                    setShowSaveModal(false);
-                    setWorkoutNameInput('');
-                    setEditingWorkoutId(null);
-                  }}
+                  onClick={closeSaveModal}
                   className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
                 >
                   Cancel
@@ -855,7 +994,7 @@ const App: React.FC = () => {
                     />
                   ) : (
                     <div className="text-center p-12 bg-gray-900/20 rounded-[3rem] border-2 border-dashed border-gray-800/40 w-full max-w-md">
-                      <p className="text-gray-500 font-black text-sm uppercase tracking-widest">Technique Clip Awaiting</p>
+                      <EmptyGifPlaceholder size="large" />
                     </div>
                   )}
                 </div>
@@ -894,6 +1033,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
