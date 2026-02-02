@@ -792,13 +792,13 @@ const App: React.FC = () => {
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150, // Shorter delay for more responsive dragging
-        tolerance: 8, // Increased tolerance to prevent accidental scroll
+        delay: 300, // Increased delay to prevent accidental drag during scrolling
+        tolerance: 12, // Increased tolerance to prevent accidental scroll
       },
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px of movement before activating drag
+        distance: 12, // Require more movement before activating drag
       },
     }),
     useSensor(KeyboardSensor, {
