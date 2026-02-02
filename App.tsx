@@ -811,7 +811,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     transition: isDragging ? 'none' : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
     opacity: isDragging ? 0.9 : 1,
     zIndex: isDragging ? 9999 : 1,
-    touchAction: 'none', // Prevent scrolling and text selection on mobile
+    touchAction: isDragging ? 'none' : 'pan-y', // Allow vertical scrolling when not dragging
     userSelect: 'none', // Prevent iOS text selection/magnifying glass
     WebkitUserSelect: 'none', // Safari prefix
     WebkitTouchCallout: 'none', // Prevent iOS callout menu
@@ -909,13 +909,16 @@ const App: React.FC = () => {
   const closeDrawer = () => setIsDrawerOpen(false);
   const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
 
+  // Custom activation constraint for touch that distinguishes scrolling from dragging
+  const touchActivationConstraint = {
+    delay: 1000, // User must hold for 1000ms before drag activates
+    tolerance: 5, // Very small tolerance - if finger moves more than 5px, cancel activation (scrolling involves continuous movement)
+  };
+
   // Configure drag-and-drop sensors
   const sensors = useSensors(
     useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 400, // Delay threshold to prevent accidental drag during scrolling
-        tolerance: 15, // Minimum movement threshold to prevent accidental scroll
-      },
+      activationConstraint: touchActivationConstraint,
     }),
     useSensor(PointerSensor, {
       activationConstraint: {
