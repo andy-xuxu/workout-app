@@ -128,21 +128,21 @@ const App: React.FC = () => {
       case 'Chest + Arms': 
         return { 
           gradient: 'from-blue-500 to-cyan-400',
-          border: 'border-blue-500/20', 
+          border: 'border-2 border-blue-500/20', 
           text: 'text-white', 
           bg: 'bg-blue-600' 
         };
       case 'Legs': 
         return { 
           gradient: 'from-emerald-500 to-green-400',
-          border: 'border-emerald-500/20', 
+          border: 'border-2 border-emerald-500/20', 
           text: 'text-white', 
           bg: 'bg-emerald-600' 
         };
       case 'Back + Shoulders': 
         return { 
           gradient: 'from-purple-600 to-pink-500',
-          border: 'border-purple-500/20', 
+          border: 'border-2 border-purple-500/20', 
           text: 'text-white', 
           bg: 'bg-purple-600' 
         };
@@ -150,7 +150,7 @@ const App: React.FC = () => {
       default:
         return { 
           gradient: 'from-gray-600 to-gray-400',
-          border: 'border-gray-800', 
+          border: 'border-2 border-gray-800', 
           text: 'text-white', 
           bg: 'bg-gray-700' 
         };
@@ -596,14 +596,19 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto">
         {isCreateMode && (
           <>
-            {customWorkouts.length > 0 && (
-              <div className="mb-8">
-                <div className="flex justify-end items-center gap-3 mb-6">
-                  <button
-                    onClick={handleSaveWorkout}
-                    className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
-                  >
-                    Save
+            <div 
+              className={`mb-8 transition-all duration-300 ease-in-out ${
+                customWorkouts.length > 0 
+                  ? 'opacity-100 max-h-[2000px] pointer-events-auto' 
+                  : 'opacity-0 max-h-0 pointer-events-none overflow-hidden'
+              }`}
+            >
+              <div className="flex justify-end items-center gap-3 mb-6">
+                <button
+                  onClick={handleSaveWorkout}
+                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                >
+                  Save
                   </button>
                   <button
                     onClick={handleClearCustomWorkout}
@@ -657,7 +662,6 @@ const App: React.FC = () => {
                   })}
                 </div>
               </div>
-            )}
 
             <nav className="max-w-7xl mx-auto mb-10">
               <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-hide">
@@ -711,7 +715,7 @@ const App: React.FC = () => {
               <div 
                 key={workout.id}
                 onClick={isCreateMode ? () => handleWorkoutToggle(workout) : undefined}
-                className={`group relative bg-[#111111] border ${isSelected ? 'border-orange-500 border-2' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
+                className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
               >
                 {isSelected && (
                   <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
