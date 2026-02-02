@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -92,6 +92,149 @@ const formatDate = (timestamp: number): string => {
   return date.toLocaleDateString();
 };
 
+// Mobile detection hook
+const useIsMobile = (): boolean => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mediaQuery = window.matchMedia('(max-width: 768px)');
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsMobile(mediaQuery.matches && hasTouch);
+    };
+
+    checkMobile();
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const handleChange = () => checkMobile();
+    
+    // Modern browsers
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      // Fallback for older browsers
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+  }, []);
+
+  return isMobile;
+};
+
+// Prominent tile detection hook
+const useProminentTile = (
+  tileIds: string[],
+  isMobile: boolean
+): { prominentTileId: string | null; getTileRef: (id: string) => (element: HTMLElement | null) => void } => {
+  const [prominentTileId, setProminentTileId] = useState<string | null>(null);
+  const tileRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const visibleAreasRef = useRef<Map<string, number>>(new Map());
+
+  const getTileRef = useCallback((id: string) => {
+    return (element: HTMLElement | null) => {
+      if (element) {
+        element.setAttribute('data-tile-id', id);
+        const previousElement = tileRefs.current.get(id);
+        if (previousElement !== element) {
+          // Unobserve previous element if it exists
+          if (previousElement && observerRef.current) {
+            observerRef.current.unobserve(previousElement);
+          }
+          tileRefs.current.set(id, element);
+          // Observe new element if observer exists
+          if (observerRef.current) {
+            observerRef.current.observe(element);
+          }
+        }
+      } else {
+        const elementToRemove = tileRefs.current.get(id);
+        if (elementToRemove && observerRef.current) {
+          observerRef.current.unobserve(elementToRemove);
+        }
+        tileRefs.current.delete(id);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || tileIds.length === 0) {
+      setProminentTileId(null);
+      visibleAreasRef.current.clear();
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+      return;
+    }
+
+    // Cleanup previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    // Clear visible areas for tiles that are no longer in the list
+    const tileIdSet = new Set(tileIds);
+    visibleAreasRef.current.forEach((_, id) => {
+      if (!tileIdSet.has(id)) {
+        visibleAreasRef.current.delete(id);
+      }
+    });
+
+    // Create intersection observer with multiple thresholds
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const tileId = entry.target.getAttribute('data-tile-id');
+          if (!tileId || !tileIdSet.has(tileId)) return;
+
+          // Calculate visible area
+          const visibleArea = entry.intersectionRatio * (entry.target as HTMLElement).offsetHeight;
+          visibleAreasRef.current.set(tileId, visibleArea);
+        });
+
+        // Find tile with largest visible area (only from current tileIds)
+        let maxArea = 0;
+        let mostProminentId: string | null = null;
+
+        visibleAreasRef.current.forEach((area, id) => {
+          if (tileIdSet.has(id) && area > maxArea) {
+            maxArea = area;
+            mostProminentId = id;
+          }
+        });
+
+        // Only set prominent tile if it has significant visibility (at least 10% visible)
+        if (mostProminentId && maxArea > 0) {
+          setProminentTileId(mostProminentId);
+        } else {
+          setProminentTileId(null);
+        }
+      },
+      {
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0],
+        rootMargin: '0px',
+      }
+    );
+
+    // Observe all existing tiles that are in the current tileIds list
+    tileRefs.current.forEach((element, id) => {
+      if (tileIdSet.has(id) && observerRef.current) {
+        observerRef.current.observe(element);
+      }
+    });
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
+  }, [isMobile, tileIds]);
+
+  return { prominentTileId, getTileRef };
+};
+
 // Empty GIF placeholder component
 const EmptyGifPlaceholder: React.FC<{ size?: 'small' | 'large' }> = ({ size = 'small' }) => {
   const iconSize = size === 'large' ? 'w-12 h-12' : 'w-8 h-8';
@@ -163,7 +306,7 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 relative ${
+      className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col gap-4 p-4 relative ${
         isDragging 
           ? 'shadow-2xl shadow-blue-500/20 cursor-grabbing' 
           : 'cursor-grab hover:border-gray-700 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60'
@@ -189,26 +332,6 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
         </svg>
       </button>
 
-      <div
-        onClick={() => onClick(workout)}
-        className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0"
-        onMouseDown={(e) => {
-          // Prevent drag when clicking on image
-          e.stopPropagation();
-        }}
-      >
-        {workout.gifUrl ? (
-          <img
-            src={workout.gifUrl}
-            alt={workout.name}
-            className="w-full h-full object-cover pointer-events-none"
-            loading="lazy"
-            draggable={false}
-          />
-        ) : (
-          <EmptyGifPlaceholder />
-        )}
-      </div>
       <div className="flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-3 mb-2">
           <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
@@ -243,8 +366,10 @@ const App: React.FC = () => {
   const [workoutNameInput, setWorkoutNameInput] = useState('');
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
+  const [originalWorkout, setOriginalWorkout] = useState<{ workouts: Workout[]; name: string } | null>(null);
 
   const isCreateMode = appMode === 'create';
+  const isMobile = useIsMobile();
 
   // Configure drag-and-drop sensors
   const sensors = useSensors(
@@ -274,6 +399,18 @@ const App: React.FC = () => {
       ? WORKOUT_LIBRARY
       : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
   }, [isCreateMode, selectedTag, selectedCategory]);
+
+  // Get tile IDs for prominent tile detection
+  const tileIds = useMemo(() => {
+    if (appMode === 'view-saved' && viewingWorkoutId) {
+      const viewedWorkout = savedWorkouts.find(w => w.id === viewingWorkoutId);
+      return viewedWorkout ? viewedWorkout.workouts.map(w => w.id) : [];
+    }
+    return filteredWorkouts.map(w => w.id);
+  }, [appMode, viewingWorkoutId, savedWorkouts, filteredWorkouts]);
+
+  // Prominent tile detection for mobile
+  const { prominentTileId, getTileRef } = useProminentTile(tileIds, isMobile);
 
   const getCategoryStyles = (category: Category) => {
     switch (category) {
@@ -313,7 +450,7 @@ const App: React.FC = () => {
     setCustomWorkouts(prev =>
       prev.some(w => w.id === workout.id)
         ? prev.filter(w => w.id !== workout.id)
-        : [...prev, workout]
+        : [workout, ...prev]
     );
   };
 
@@ -327,6 +464,7 @@ const App: React.FC = () => {
     setCustomWorkouts([]);
     setSelectedTag(null);
     setEditingWorkoutId(null);
+    setOriginalWorkout(null);
   };
 
   const handleBackToLanding = () => {
@@ -335,11 +473,14 @@ const App: React.FC = () => {
     setCustomWorkouts([]);
     setEditingWorkoutId(null);
     setViewingWorkoutId(null);
+    setOriginalWorkout(null);
   };
 
   const handleClearCustomWorkout = () => {
     setCustomWorkouts([]);
-    setEditingWorkoutId(null);
+    // Don't clear editingWorkoutId - user might want to clear workouts and add new ones to the same saved workout
+    // Keep editingWorkoutId set so they can still save to the same workout
+    // Keep originalWorkout as is - we need it to detect changes from the original state
   };
 
   const handleRemoveWorkout = (workoutId: string) => {
@@ -360,7 +501,11 @@ const App: React.FC = () => {
   const closeSaveModal = () => {
     setShowSaveModal(false);
     setWorkoutNameInput('');
-    setEditingWorkoutId(null);
+    // Don't clear editingWorkoutId here - keep it set so subsequent saves continue to update the same workout
+    // It will be cleared when creating a new workout or going back to landing
+    // setEditingWorkoutId(null);
+    // Don't clear originalWorkout either - we need it to detect changes
+    // setOriginalWorkout(null);
   };
 
   const handleSaveWorkout = () => {
@@ -370,14 +515,61 @@ const App: React.FC = () => {
     if (editingWorkoutId) {
       const workout = savedWorkouts.find(w => w.id === editingWorkoutId);
       setWorkoutNameInput(workout?.name || '');
+      // Store original state if not already stored
+      if (!originalWorkout && workout) {
+        setOriginalWorkout({ workouts: [...workout.workouts], name: workout.name });
+      }
     } else {
       setWorkoutNameInput('');
     }
   };
 
+  // Check if changes were made when editing (for Save button - doesn't check name since modal isn't open yet)
+  const hasWorkoutChanges = useMemo(() => {
+    if (!editingWorkoutId || !originalWorkout) return true; // New workout always has "changes"
+    
+    // Compare workouts by IDs and order - reordering counts as a change
+    const originalIds = originalWorkout.workouts.map(w => w.id);
+    const currentIds = customWorkouts.map(w => w.id);
+    
+    // Check if length changed
+    if (originalIds.length !== currentIds.length) {
+      return true;
+    }
+    
+    // Check if order or content changed
+    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
+    
+    return workoutsChanged;
+  }, [editingWorkoutId, originalWorkout, customWorkouts]);
+
+  // Check if changes were made when editing (for modal - includes name check)
+  const hasChanges = useMemo(() => {
+    if (!editingWorkoutId || !originalWorkout) return true; // New workout always has "changes"
+    
+    const currentName = workoutNameInput.trim();
+    const nameChanged = currentName !== originalWorkout.name;
+    
+    // Compare workouts by IDs and order - reordering counts as a change
+    const originalIds = originalWorkout.workouts.map(w => w.id);
+    const currentIds = customWorkouts.map(w => w.id);
+    
+    // Check if length changed
+    if (originalIds.length !== currentIds.length) {
+      return true;
+    }
+    
+    // Check if order or content changed
+    const workoutsChanged = originalIds.some((id, index) => id !== currentIds[index]);
+    
+    return nameChanged || workoutsChanged;
+  }, [editingWorkoutId, originalWorkout, workoutNameInput, customWorkouts]);
+
   const handleSaveWorkoutConfirm = () => {
     const name = workoutNameInput.trim();
     if (!name || name.length === 0 || name.length > 50) return;
+    // Don't save if no changes were made
+    if (editingWorkoutId && !hasChanges) return;
 
     if (editingWorkoutId) {
       // Update existing workout
@@ -385,6 +577,8 @@ const App: React.FC = () => {
         name,
         workouts: [...customWorkouts]
       });
+      // Update originalWorkout to the newly saved state so we can detect future changes
+      setOriginalWorkout({ workouts: [...customWorkouts], name });
       // Keep editingWorkoutId set so subsequent saves continue to update the same workout
     } else {
       // Create new workout
@@ -405,6 +599,7 @@ const App: React.FC = () => {
     if (workout) {
       setCustomWorkouts(workout.workouts);
       setEditingWorkoutId(workoutId);
+      setOriginalWorkout({ workouts: [...workout.workouts], name: workout.name });
       setAppMode('create');
       setSelectedTag(null);
     }
@@ -525,35 +720,35 @@ const App: React.FC = () => {
               <p className="text-gray-500 text-sm">Create one in the workout builder!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {savedWorkouts.map((savedWorkout) => (
                 <div
                   key={savedWorkout.id}
-                  className="group bg-[#111111] border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/60"
+                  className="group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60"
                 >
-                  <div className="mb-4">
+                  <div className="flex-1 flex flex-col justify-center">
                     <h3 className="text-xl font-bold mb-2 transition-colors duration-300 group-hover:text-white">{savedWorkout.name}</h3>
                     <p className="text-gray-500 text-sm mb-1">
                       {savedWorkout.workouts.length} {savedWorkout.workouts.length === 1 ? 'exercise' : 'exercises'}
                     </p>
                     <p className="text-gray-600 text-xs">Created {formatDate(savedWorkout.createdAt)}</p>
                   </div>
-                  <div className="flex gap-2 mt-6">
+                  <div className="flex items-center gap-2 md:pr-4">
                     <button
                       onClick={() => handleViewSavedWorkout(savedWorkout.id)}
-                      className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                      className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
                     >
                       View
                     </button>
                     <button
                       onClick={() => handleEditSavedWorkout(savedWorkout.id)}
-                      className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                      className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteSavedWorkout(savedWorkout.id)}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                      className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
                     >
                       Delete
                     </button>
@@ -600,16 +795,21 @@ const App: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="space-y-4">
             {viewedWorkout.workouts.map((workout) => {
               const styles = getCategoryStyles(workout.category);
+              const isProminent = isMobile && prominentTileId === workout.id;
               return (
                 <div 
                   key={workout.id}
+                  ref={getTileRef(workout.id)}
+                  className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
+                    isProminent ? 'scale-105' : ''
+                  }`}
+                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
                   onClick={() => setSelectedWorkout(workout)}
-                  className="group relative bg-[#111111] border border-gray-800 rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col active:scale-[0.98] shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02] cursor-pointer"
                 >
-                  <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
+                  <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
                     {workout.gifUrl ? (
                       <img 
                         src={workout.gifUrl} 
@@ -620,32 +820,36 @@ const App: React.FC = () => {
                     ) : (
                       <EmptyGifPlaceholder />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
-                    <div className="absolute top-4 left-4 flex gap-2">
-                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
                         {workout.tag}
                       </span>
-                      <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                      <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
                         {workout.intensity}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
-                    <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium text-center">{workout.description}</p>
-                    
-                    <div className="mt-auto">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedWorkout(workout);
-                        }}
-                        className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest text-center`}
-                      >
-                        View
-                      </button>
+                    <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+                    <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {workout.targetMuscles.map(m => (
+                        <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+                          {m}
+                        </span>
+                      ))}
                     </div>
+                  </div>
+                  <div className="flex items-center md:pr-4">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWorkout(workout);
+                      }}
+                      className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
+                    >
+                      View
+                    </button>
                   </div>
                 </div>
               );
@@ -773,7 +977,12 @@ const App: React.FC = () => {
               <div className="flex justify-end items-center gap-3 mb-6">
                 <button
                   onClick={handleSaveWorkout}
-                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                  disabled={editingWorkoutId && !hasWorkoutChanges}
+                  className={`px-6 py-2.5 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
+                    editingWorkoutId && !hasWorkoutChanges
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
                 >
                   Save
                   </button>
@@ -852,72 +1061,140 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredWorkouts.map((workout) => {
-            const styles = getCategoryStyles(workout.category);
-            const isSelected = isWorkoutSelected(workout.id);
+        {appMode === 'view' ? (
+          <div className="space-y-4">
+            {filteredWorkouts.map((workout) => {
+              const styles = getCategoryStyles(workout.category);
+              const isProminent = isMobile && prominentTileId === workout.id;
 
-            return (
-              <div 
-                key={workout.id}
-                onClick={isCreateMode ? () => handleWorkoutToggle(workout) : undefined}
-                className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02]`}
-              >
-                {isSelected && (
-                  <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
-                <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
-                  {workout.gifUrl ? (
-                    <img 
-                      src={workout.gifUrl} 
-                      alt={workout.name}
-                      className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
-                      loading="lazy"
-                    />
+              return (
+                <div 
+                  key={workout.id}
+                  ref={getTileRef(workout.id)}
+                  className={`group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
+                    isProminent ? 'scale-105' : ''
+                  }`}
+                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
+                  onClick={() => setSelectedWorkout(workout)}
+                >
+                  <div className="w-full md:w-48 h-48 bg-black/40 overflow-hidden rounded-xl flex-shrink-0">
+                    {workout.gifUrl ? (
+                      <img 
+                        src={workout.gifUrl} 
+                        alt={workout.name}
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                        loading="lazy"
+                      />
                     ) : (
                       <EmptyGifPlaceholder />
                     )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
-                  <div className="absolute top-4 left-4 flex gap-2">
-                     <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                      {workout.tag}
-                    </span>
-                    <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
-                      {workout.intensity}
-                    </span>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`px-3 py-1 ${styles.bg} ${styles.text} text-[10px] font-black rounded-lg uppercase tracking-widest transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 select-none`}>
+                        {workout.tag}
+                      </span>
+                      <span className={`px-3 py-1 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-lg uppercase tracking-widest select-none`}>
+                        {workout.intensity}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mb-1 transition-colors duration-300 group-hover:text-white select-none">{workout.name}</h3>
+                    <p className="text-gray-400 text-sm mb-3 select-none">{workout.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {workout.targetMuscles.map(m => (
+                        <span key={m} className="px-3 py-1 bg-black/40 text-gray-400 text-[10px] font-black rounded-lg border border-gray-800 uppercase select-none">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center md:pr-4">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWorkout(workout);
+                      }}
+                      className={`px-6 py-3 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest whitespace-nowrap`}
+                    >
+                      View
+                    </button>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredWorkouts.map((workout) => {
+              const styles = getCategoryStyles(workout.category);
+              const isSelected = isWorkoutSelected(workout.id);
+              const isProminent = isMobile && prominentTileId === workout.id;
 
-                <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
-                  <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8 leading-relaxed font-medium text-center">{workout.description}</p>
-                  
-                  <div className="mt-auto">
-                    {isCreateMode ? (
-                      <div className={`w-full py-4 ${isSelected ? 'bg-orange-600' : 'bg-gray-700'} text-white text-[10px] font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-center`}>
-                        {isSelected ? 'Selected' : 'Tap to Add'}
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedWorkout(workout);
-                        }}
-                        className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest text-center`}
-                      >
-                        View
-                      </button>
-                    )}
+              return (
+                <div 
+                  key={workout.id}
+                  ref={getTileRef(workout.id)}
+                  onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => setSelectedWorkout(workout)}
+                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden transition-all duration-300 flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} shadow-sm hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-2 hover:scale-[1.02] ${
+                    isProminent ? 'scale-105' : ''
+                  }`}
+                  style={isProminent ? { filter: 'brightness(1.15)' } : undefined}
+                >
+                  {isSelected && (
+                    <div className="absolute top-4 right-4 z-10 bg-orange-500 rounded-full p-2 shadow-lg">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="h-48 bg-black/40 overflow-hidden relative transition-all duration-500">
+                    {workout.gifUrl ? (
+                      <img 
+                        src={workout.gifUrl} 
+                        alt={workout.name}
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                        loading="lazy"
+                      />
+                      ) : (
+                        <EmptyGifPlaceholder />
+                      )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent"></div>
+                    <div className="absolute top-4 left-4 flex gap-2">
+                       <span className={`px-3 py-1.5 ${styles.bg} ${styles.text} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                        {workout.tag}
+                      </span>
+                      <span className={`px-3 py-1.5 ${getIntensityBadgeClass(workout.intensity)} text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                        {workout.intensity}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h3 className="text-xl font-bold mb-1.5 group-hover:text-white transition-colors duration-300 text-center">{workout.name}</h3>
+                    
+                    <div className="mt-auto">
+                      {isCreateMode ? (
+                        <div className={`w-full py-4 ${isSelected ? 'bg-orange-600' : 'bg-gray-700'} text-white text-[10px] font-black rounded-2xl transition-all shadow-lg uppercase tracking-widest text-center`}>
+                          {isSelected ? 'Selected' : 'Tap to Add'}
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedWorkout(workout);
+                          }}
+                          className={`w-full py-4 bg-gradient-to-br ${styles.gradient} text-black text-[10px] font-black rounded-2xl transition-all shadow-lg active:brightness-90 uppercase tracking-widest text-center`}
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
       {showSaveModal && (
@@ -952,8 +1229,12 @@ const App: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveWorkoutConfirm}
-                  disabled={!workoutNameInput.trim()}
-                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-2xl text-sm font-bold transition-all active:scale-95"
+                  disabled={!workoutNameInput.trim() || (editingWorkoutId && !hasChanges)}
+                  className={`flex-1 px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
+                    editingWorkoutId && !hasChanges
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-700 disabled:cursor-not-allowed'
+                  }`}
                 >
                   {editingWorkoutId ? 'Update' : 'Save'}
                 </button>
