@@ -22,13 +22,15 @@ import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod, AggregatedMetr
 
 type AppMode =
   | 'landing'
+  | 'workout-selection'
   | 'view'
   | 'create'
   | 'saved'
   | 'view-saved'
   | 'workout-mode'
   | 'workout-active'
-  | 'workout-history';
+  | 'workout-history'
+  | 'profile';
 
 type TrackingMode = 'quick' | 'detailed';
 
@@ -139,7 +141,6 @@ interface TimeSeriesChartProps {
   colorClassName: string;
   data: TimeSeriesPoint[];
   metric?: 'volume' | 'reps';
-  onDoubleClick?: () => void;
   onPointSelect?: (date: Date) => void;
   width?: number;
   height?: number;
@@ -175,7 +176,6 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   colorClassName,
   data,
   metric,
-  onDoubleClick,
   onPointSelect,
   width: propWidth,
   height: propHeight,
@@ -319,7 +319,6 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   return (
     <div
       className="bg-[#111111] border border-gray-800 rounded-2xl p-4 md:p-5 shadow-xl"
-      onDoubleClick={onDoubleClick}
     >
       <div className="flex items-center justify-between mb-1">
         <div>
@@ -863,16 +862,19 @@ const Header: React.FC<HeaderProps> = ({ onBack, subtitle }) => {
   return (
     <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
       <div>
-        <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
+        <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent inline-block transition-all duration-500">
           PulseFit Pro
         </h1>
         {subtitle && <p className="text-gray-500 text-sm mt-2">{subtitle}</p>}
       </div>
       <button
         onClick={onBack}
-        className="px-5 py-3 md:px-6 md:py-3 text-gray-400 hover:text-white transition-colors text-base md:text-sm font-medium rounded-lg hover:bg-gray-800/50 active:scale-95 min-w-[88px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
       >
-        ← Back
+        <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        <span className="font-bold uppercase tracking-wider text-sm">Back</span>
       </button>
     </header>
   );
@@ -1766,9 +1768,12 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-3">
         <button
           onClick={onBack}
-          className="px-4 py-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors text-sm font-medium"
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
         >
-          ← Back
+          <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span className="font-bold uppercase tracking-wider text-sm">Back</span>
         </button>
         <div className="flex flex-col items-center flex-1 min-w-0">
           <h1 className="text-base font-bold truncate w-full text-center max-w-[200px] md:max-w-sm">{workoutName}</h1>
@@ -2605,6 +2610,10 @@ const App: React.FC = () => {
     closeDrawer();
   };
 
+  const handleBackToProfile = () => {
+    handleBackToLanding();
+  };
+
   const handleBackToLanding = () => {
     setAppMode('landing');
     setSelectedWorkout(null);
@@ -2624,69 +2633,25 @@ const App: React.FC = () => {
     closeDrawer();
   };
 
-  const MobileTabBar = () => {
-    if (!isMobile) return null;
-    
-    // Only show on main screens
-    const showOnModes = ['landing', 'workout-mode', 'workout-history', 'saved', 'view', 'create', 'view-saved'];
-    if (!showOnModes.includes(appMode)) return null;
-
-    const tabs = [
-      { id: 'landing', label: 'Home', icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      )},
-      { id: 'workout-mode', label: 'Workout', icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )},
-      { id: 'workout-history', label: 'History', icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
-        </svg>
-      )},
-      { id: 'saved', label: 'Library', icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
-      )},
-    ];
-
-    return (
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0d0d0d]/80 backdrop-blur-xl border-t border-white/5 z-50 px-2 pb-safe-area">
-        <div className="flex justify-around items-center h-16 max-w-md mx-auto">
-          {tabs.map((tab) => {
-            const isActive = appMode === tab.id || (tab.id === 'workout-mode' && (appMode === 'view' || appMode === 'create')) || (tab.id === 'saved' && appMode === 'view-saved');
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (tab.id === 'landing') handleBackToLanding();
-                  else if (tab.id === 'workout-mode') handleViewWorkouts();
-                  else if (tab.id === 'workout-history') handleViewWorkoutHistory();
-                  else if (tab.id === 'saved') handleViewSavedWorkouts();
-                }}
-                className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
-                  isActive ? 'text-emerald-400' : 'text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
-                  {tab.icon}
-                </div>
-                <span className="text-[10px] font-bold mt-1 uppercase tracking-wider">{tab.label}</span>
-                {isActive && (
-                  <div className="absolute bottom-1 w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
+  const handleBackToWorkoutSelection = () => {
+    setAppMode('workout-selection');
+    setSelectedWorkout(null);
+    setCustomWorkouts([]);
+    setEditingWorkoutId(null);
+    setViewingWorkoutId(null);
+    setOriginalWorkout(null);
+    setActiveWorkout(null);
+    setCompletedExercises(new Set());
+    setTrackingByExercise({});
+    setExerciseLogsById({});
+    setShowWorkoutCompletion(false);
+    setCompletedWorkoutLog(null);
+    setIsWorkoutSaved(false);
+    setWasDrawerOpenBeforeModal(false);
+    setSelectedWorkoutLog(null);
+    closeDrawer();
   };
+
 
   const handleStartWorkout = (item: WorkoutSelectionItem) => {
     if (item.workouts.length === 0) return;
@@ -2881,7 +2846,7 @@ const App: React.FC = () => {
   const handleBackFromWorkoutActive = () => {
     const hasProgress = completedExercises.size > 0;
     if (hasProgress && !window.confirm('Leave workout? Your progress will not be saved.')) return;
-    setAppMode('workout-mode');
+    setAppMode('workout-selection');
     setActiveWorkout(null);
     setCompletedExercises(new Set());
     setTrackingByExercise({});
@@ -2997,7 +2962,7 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutCompletionDone = () => {
-    // Navigate all the way back to main landing page with 4 tiles
+    // Navigate back to workout selection page
     setShowWorkoutCompletion(false);
     setActiveWorkout(null);
     setCompletedExercises(new Set());
@@ -3005,7 +2970,7 @@ const App: React.FC = () => {
     setExerciseLogsById({});
     setCompletedWorkoutLog(null);
     setIsWorkoutSaved(false);
-    setAppMode('landing');
+    setAppMode('workout-selection');
     closeDrawer();
   };
 
@@ -3137,8 +3102,8 @@ const App: React.FC = () => {
 
   const handleCheckmarkAnimationComplete = () => {
     setShowCheckmarkAnimation(false);
-    // Navigate to landing page
-    handleBackToLanding();
+    // Navigate back to workout selection page
+    handleBackToWorkoutSelection();
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -3295,77 +3260,189 @@ const App: React.FC = () => {
     });
   }, []);
 
+  const handleViewWorkoutSelection = () => {
+    setAppMode('workout-selection');
+  };
+
+  const handleViewProfile = () => {
+    setAppMode('profile');
+  };
+
   if (appMode === 'landing') {
     return (
       <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
         <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-12">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent mb-12">
             PulseFit Pro
           </h1>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <button
-              onClick={handleViewWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
+              onClick={handleViewWorkoutSelection}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-12 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
-                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
+                  <svg className="w-10 h-10 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Workout Mode</h2>
-                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Begin a workout</p>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Workout</h2>
+                <p className="text-gray-500 text-base text-center transition-colors duration-300 group-hover:text-gray-400">Train and track progress</p>
               </div>
             </button>
             
             <button
-              onClick={handleCreateNewWorkout}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-orange-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
-            >
-              <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/50">
-                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-125" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-orange-400">Create Workout</h2>
-                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Build your custom routine</p>
-              </div>
-            </button>
-
-            <button
-              onClick={handleViewSavedWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
-            >
-              <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-purple-500/50">
-                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-400">Saved Workouts</h2>
-                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Access your routines</p>
-              </div>
-            </button>
-
-            <button
               onClick={handleViewWorkoutHistory}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-12 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald-500/50">
-                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald-500/50">
+                  <svg className="w-10 h-10 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-emerald-400">Workout History</h2>
-                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Review past sessions</p>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-emerald-400">History</h2>
+                <p className="text-gray-500 text-base text-center transition-colors duration-300 group-hover:text-gray-400">View past sessions</p>
               </div>
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (appMode === 'workout-selection') {
+    return (
+      <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
+        <div className="max-w-4xl w-full text-center">
+          <div className="flex items-center justify-between mb-12">
+            <button 
+              onClick={handleBackToLanding}
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+            >
+              <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="font-bold uppercase tracking-wider text-sm">Back</span>
+            </button>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">
+              Workout
+            </h1>
+            <div className="w-20" /> {/* Spacer for centering */}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <button
+              onClick={handleViewWorkouts}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+            >
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
+                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold mb-2 group-hover:text-blue-400">Begin Workout</h2>
+              <p className="text-gray-500 text-sm">Start a training session</p>
+            </button>
+            
+            <button
+              onClick={handleCreateNewWorkout}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+            >
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/50">
+                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-125" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold mb-2 group-hover:text-orange-400">Create Workout</h2>
+              <p className="text-gray-500 text-sm">Build a custom routine</p>
+            </button>
+
+            <button
+              onClick={handleViewSavedWorkouts}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+            >
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-purple-500/50">
+                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold mb-2 group-hover:text-purple-400">View Workouts</h2>
+              <p className="text-gray-500 text-sm">Access your library</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (appMode === 'profile') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
+        <div className="flex items-center justify-between mb-12 max-w-4xl mx-auto">
+          <button 
+            onClick={handleBackToLanding}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+          >
+            <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-bold uppercase tracking-wider text-sm">Back</span>
+          </button>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Profile
+          </h1>
+          <div className="w-20" />
+        </div>
+
+        <main className="max-w-4xl mx-auto space-y-8">
+          <div className="bg-[#111111] border border-gray-800 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8">
+            <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-2xl shadow-purple-500/20">
+              <svg className="w-16 h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl font-bold mb-2">PulseFit User</h2>
+              <p className="text-gray-500 mb-6">Level 1 Athlete</p>
+              <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                <div className="bg-gray-900/50 border border-gray-800 px-4 py-2 rounded-xl">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Workouts</span>
+                  <span className="text-xl font-bold text-emerald-400">{workoutLogs.length}</span>
+                </div>
+                <div className="bg-gray-900/50 border border-gray-800 px-4 py-2 rounded-xl">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Streak</span>
+                  <span className="text-xl font-bold text-orange-400">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            <button
+              onClick={handleViewWorkoutHistory}
+              className="group bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <h3 className="text-xl font-bold group-hover:text-emerald-400 transition-colors">Workout History</h3>
+                  <p className="text-gray-500 text-sm">Review your past sessions and progress</p>
+                </div>
+              </div>
+              <svg className="w-6 h-6 text-gray-600 group-hover:text-emerald-400 transition-all group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
@@ -3376,7 +3453,7 @@ const App: React.FC = () => {
         predefinedWorkouts={PREDEFINED_WORKOUTS}
         savedWorkouts={savedWorkouts}
         onSelectWorkout={handleStartWorkout}
-        onBack={handleBackToLanding}
+        onBack={handleBackToWorkoutSelection}
         getCategoryStyles={getCategoryStyles}
       />
     );
@@ -3414,10 +3491,12 @@ const App: React.FC = () => {
     );
   }
 
+  // Note: 'create', 'saved', and 'view-saved' modes are handled in the fallback return statement below
+
   if (appMode === 'workout-history') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-        <Header onBack={handleBackToLanding} />
+        <Header onBack={handleBackToProfile} />
 
         <main className="max-w-6xl mx-auto space-y-6">
           {workoutLogs.length === 0 ? (
@@ -3464,7 +3543,6 @@ const App: React.FC = () => {
                       ? historyVolumeData
                       : historyRepsData
                   }
-                  onDoubleClick={() => handleOpenCalendar()}
                   onPointSelect={(date) => handleOpenCalendar(date)}
                   width={800}
                   height={400}
@@ -3522,7 +3600,7 @@ const App: React.FC = () => {
   if (appMode === 'saved') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-        <Header onBack={handleBackToLanding} />
+        <Header onBack={handleBackToWorkoutSelection} />
 
         <main className="max-w-7xl mx-auto">
           {savedWorkouts.length === 0 ? (
@@ -3587,7 +3665,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
         <header className="max-w-7xl mx-auto mb-8 md:mb-12 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block transition-all duration-500">
+            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent inline-block transition-all duration-500">
               PulseFit Pro
             </h1>
             <p className="text-gray-500 text-sm mt-2">{viewedWorkout.name} • {viewedWorkout.workouts.length} {viewedWorkout.workouts.length === 1 ? 'exercise' : 'exercises'}</p>
@@ -3637,7 +3715,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-      <Header onBack={handleBackToLanding} />
+      <Header onBack={isCreateMode ? handleBackToWorkoutSelection : handleBackToLanding} />
 
       {!isCreateMode && (
         <nav className="max-w-7xl mx-auto mb-10">
@@ -3906,8 +3984,6 @@ const App: React.FC = () => {
           isMobile={isMobile}
         />
       )}
-
-      <MobileTabBar />
     </div>
   );
 };
