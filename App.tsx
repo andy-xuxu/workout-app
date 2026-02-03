@@ -3328,41 +3328,41 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <button
               onClick={handleViewWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
             >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
-                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold mb-2 group-hover:text-blue-400">Begin Workout</h2>
+              <h2 className="text-xl font-bold mb-2">Begin Workout</h2>
               <p className="text-gray-500 text-sm">Start a training session</p>
             </button>
             
             <button
               onClick={handleCreateNewWorkout}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
             >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/50">
-                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-125" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold mb-2 group-hover:text-orange-400">Create Workout</h2>
+              <h2 className="text-xl font-bold mb-2">Create Workout</h2>
               <p className="text-gray-500 text-sm">Build a custom routine</p>
             </button>
 
             <button
               onClick={handleViewSavedWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center"
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
             >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-purple-500/50">
-                <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold mb-2 group-hover:text-purple-400">View Workouts</h2>
+              <h2 className="text-xl font-bold mb-2">View Workouts</h2>
               <p className="text-gray-500 text-sm">Access your library</p>
             </button>
           </div>
