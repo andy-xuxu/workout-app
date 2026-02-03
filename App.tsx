@@ -86,8 +86,8 @@ const createDefaultTrackingState = (): ExerciseTrackingState => {
   for (let i = 0; i < 3; i += 1) {
     defaultSets.push({
       id: `default-set-${Date.now()}-${i}-${Math.random()}`,
-      weight: '0',
-      reps: '10',
+      weight: '',
+      reps: '',
     });
   }
   return {
@@ -852,70 +852,63 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           {/* Mobile GIF preview - peek bar */}
           <div className="md:hidden flex-shrink-0">
             <button
-              onClick={() => setIsGifExpanded(!isGifExpanded)}
-              className="w-full relative overflow-hidden transition-all duration-300 ease-out"
-              style={{ height: isGifExpanded ? '180px' : '44px' }}
+              onClick={() => setIsGifExpanded(true)}
+              className="w-full relative overflow-hidden h-11"
             >
-              {/* Animated gradient background when collapsed */}
-              {!isGifExpanded && (
-                <>
-                  <div className={`absolute inset-0 bg-gradient-to-r ${styles.gradient} opacity-20`}></div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
-                  {/* Shimmer effect */}
-                  <div 
-                    className="absolute inset-0 overflow-hidden"
-                  >
-                    <div 
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                      style={{ animation: 'shimmer 2s infinite linear' }}
-                    ></div>
-                  </div>
-                </>
-              )}
-              
-              {/* Expanded state background */}
-              {isGifExpanded && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-              )}
-              
-              {/* GIF content - only visible when expanded */}
-              <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${isGifExpanded ? 'opacity-100' : 'opacity-0'}`}>
-                {workout.gifUrl ? (
-                  <img
-                    src={workout.gifUrl}
-                    alt={workout.name}
-                    className="max-h-full max-w-full p-3 object-contain"
-                    loading="lazy"
-                  />
-                ) : (
-                  <EmptyGifPlaceholder size="small" />
-                )}
+              {/* Animated gradient background */}
+              <div className={`absolute inset-0 bg-gradient-to-r ${styles.gradient} opacity-20`}></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 overflow-hidden">
+                <div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+                  style={{ animation: 'shimmer 2s infinite linear' }}
+                ></div>
               </div>
               
-              {/* "Tap to view" label when collapsed */}
-              {!isGifExpanded && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span className="text-white/90 text-xs font-semibold uppercase tracking-wider">Tap to view</span>
-                  </div>
+              {/* "Tap to view" label */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-white/90 text-xs font-semibold uppercase tracking-wider">Tap to view</span>
                 </div>
-              )}
-              
-              {/* Tap to close when expanded */}
-              {isGifExpanded && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                  <span className="text-white/50 text-[10px] uppercase tracking-wider">tap to close</span>
-                </div>
-              )}
+              </div>
               
               {/* Bottom border accent */}
               <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${styles.gradient}`}></div>
             </button>
           </div>
+
+          {/* Full-screen GIF overlay - mobile only */}
+          {isGifExpanded && (
+            <div 
+              className="md:hidden fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-md"
+              onClick={() => setIsGifExpanded(false)}
+            >
+              {/* GIF container */}
+              <div className="flex-1 flex items-center justify-center p-4">
+                {workout.gifUrl ? (
+                  <img
+                    src={workout.gifUrl}
+                    alt={workout.name}
+                    className="max-h-full max-w-full object-contain"
+                    style={{ animation: 'gifExpand 0.3s ease-out forwards' }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <EmptyGifPlaceholder size="large" />
+                )}
+              </div>
+              
+              {/* Close hint */}
+              <div className="pb-8 text-center">
+                <span className="text-white/50 text-xs uppercase tracking-wider">tap anywhere to close</span>
+              </div>
+            </div>
+          )}
           
           {/* Image area - flashcard front - desktop only */}
           <div className="hidden md:block relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(30vh, 200px)' }}>
@@ -934,7 +927,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </div>
 
           {/* Content area - flashcard back */}
-          <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div 
+            className={`p-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto transition-transform duration-300 ease-out ${isGifExpanded ? 'md:translate-y-0 translate-y-[100vh]' : 'translate-y-0'}`}
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             <div>
               <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-2 md:mb-3`}>
                 {workout.tag}
@@ -956,66 +952,81 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1">
-                  <span className="text-center">SET</span>
-                  <span className="text-center">LBS</span>
-                  <span className="text-center">REPS</span>
-                  <span></span>
-                </div>
-                {trackingState.sets.map((set, idx) => {
-                  const isDefaultWeight = set.weight === '0' || set.weight === '';
-                  const isDefaultReps = set.reps === '10' || set.reps === '';
-                  return (
-                    <div
-                      key={set.id}
-                      className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-[#121212] border border-gray-800 rounded-lg px-2 py-2"
-                    >
-                      <span className="text-sm md:text-base text-white font-bold text-center">{idx + 1}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        inputMode="decimal"
-                        value={set.weight}
-                        onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
-                        className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield ${
-                          isDefaultWeight ? 'text-gray-500' : 'text-white'
-                        }`}
-                        placeholder="0"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={set.reps}
-                        onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
-                        className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield ${
-                          isDefaultReps ? 'text-gray-500' : 'text-white'
-                        }`}
-                        placeholder="10"
-                      />
-                      <button
-                        onClick={() => onRemoveSet(set.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
-                        aria-label="Remove set"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-                <button
-                  onClick={onAddSet}
-                  className="w-full py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+              {/* Scrollable sets grid container */}
+              <div className="relative">
+                {/* Top fade gradient */}
+                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
+                
+                {/* Scrollable area */}
+                <div 
+                  className="max-h-[200px] md:max-h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Set
-                </button>
+                  <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
+                    <span className="text-center">SET</span>
+                    <span className="text-center">LBS</span>
+                    <span className="text-center">REPS</span>
+                    <span></span>
+                  </div>
+                  {trackingState.sets.map((set, idx) => {
+                    const isEmptyWeight = set.weight === '';
+                    const isEmptyReps = set.reps === '';
+                    return (
+                      <div
+                        key={set.id}
+                        className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-[#121212] border border-gray-800 rounded-lg px-2 py-2"
+                      >
+                        <span className="text-sm md:text-base text-white font-bold text-center">{idx + 1}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="decimal"
+                          value={set.weight}
+                          onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
+                          className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
+                            isEmptyWeight ? 'text-gray-500' : 'text-white'
+                          }`}
+                          placeholder="0"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={set.reps}
+                          onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
+                          className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
+                            isEmptyReps ? 'text-gray-500' : 'text-white'
+                          }`}
+                          placeholder="0"
+                        />
+                        <button
+                          onClick={() => onRemoveSet(set.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
+                          aria-label="Remove set"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Bottom fade gradient */}
+                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-b-lg"></div>
               </div>
+
+              {/* Add Set button - outside scrollable area */}
+              <button
+                onClick={onAddSet}
+                className="w-full mt-3 py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Set
+              </button>
             </div>
             <button
               onClick={onMarkComplete}
@@ -1930,8 +1941,8 @@ const App: React.FC = () => {
       const last = current.sets[current.sets.length - 1];
       const nextSet: SetInput = {
         id: `${workoutId}-set-${Date.now()}-${Math.random()}`,
-        weight: last?.weight && last.weight !== '0' ? last.weight : '0',
-        reps: last?.reps && last.reps !== '' ? last.reps : '10',
+        weight: last?.weight || '',
+        reps: last?.reps || '',
       };
       return {
         ...prev,
