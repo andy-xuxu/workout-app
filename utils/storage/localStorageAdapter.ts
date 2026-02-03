@@ -12,11 +12,19 @@ const LOGS_STORAGE_KEY = 'pulsefit-workout-logs';
 export class LocalStorageAdapter implements StorageAdapter {
   /**
    * Save a new workout routine
+   * Uses put() semantics - updates if exists, adds if new
    */
   async saveWorkout(workout: SavedWorkout): Promise<void> {
     try {
       const saved = await this.loadWorkouts();
-      saved.push(workout);
+      const existingIndex = saved.findIndex(w => w.id === workout.id);
+      if (existingIndex >= 0) {
+        // Update existing workout
+        saved[existingIndex] = workout;
+      } else {
+        // Add new workout
+        saved.push(workout);
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     } catch (error) {
       console.error('Error saving workout to localStorage:', error);
@@ -80,11 +88,19 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   /**
    * Save a workout log entry
+   * Uses put() semantics - updates if exists, adds if new
    */
   async saveWorkoutLog(log: WorkoutLog): Promise<void> {
     try {
       const logs = await this.loadWorkoutLogs();
-      logs.push(log);
+      const existingIndex = logs.findIndex(l => l.id === log.id);
+      if (existingIndex >= 0) {
+        // Update existing log
+        logs[existingIndex] = log;
+      } else {
+        // Add new log
+        logs.push(log);
+      }
       localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
     } catch (error) {
       console.error('Error saving workout log to localStorage:', error);

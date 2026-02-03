@@ -1,3 +1,27 @@
+/**
+ * Storage Module - Persistent Data Management
+ * 
+ * This module provides persistent storage for user workout data:
+ * - Workout Logs: Complete history of all completed workouts with exercises, sets, reps, weights, and timestamps
+ * - Saved Workouts: User-created custom workout routines
+ * 
+ * Storage Strategy:
+ * 1. Primary: IndexedDB (unlimited storage, persists across sessions)
+ * 2. Fallback: localStorage (for browsers/devices where IndexedDB is unavailable)
+ * 3. Automatic migration from localStorage to IndexedDB on first use
+ * 
+ * Data Persistence:
+ * - All data is automatically saved when created/updated
+ * - Data persists across page reloads, browser restarts, and device reboots
+ * - Data is stored locally on the user's device (no cloud sync)
+ * - Each user's data is isolated to their browser/device
+ * 
+ * Error Handling:
+ * - Graceful fallback if IndexedDB fails
+ * - Comprehensive error logging for debugging
+ * - Data validation to prevent corruption
+ */
+
 import { StorageAdapter } from './types';
 import { IndexedDBStorage } from './indexedDBStorage';
 import { LocalStorageAdapter } from './localStorageAdapter';

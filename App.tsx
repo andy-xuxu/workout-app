@@ -487,6 +487,7 @@ interface CalendarViewProps {
   workoutLogs: WorkoutLog[];
   selectedDate?: Date;
   onSelectLog: (log: WorkoutLog) => void;
+  inline?: boolean;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -495,6 +496,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   workoutLogs,
   selectedDate,
   onSelectLog,
+  inline = false,
 }) => {
   const initialDate = selectedDate ?? (workoutLogs[0] ? new Date(workoutLogs[0].completedAt) : new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
@@ -546,6 +548,78 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   });
 
   const activeLogs = activeDateKey ? logsByDay[activeDateKey] ?? [] : [];
+
+  if (inline) {
+    return (
+      <div className="flex flex-col">
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+            className="px-3 py-2 text-sm text-gray-400 hover:text-white"
+          >
+            Prev
+          </button>
+          <div className="text-sm font-semibold text-white">
+            {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </div>
+          <button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+            className="px-3 py-2 text-sm text-gray-400 hover:text-white"
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 p-5 text-xs text-gray-500">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+            <div key={label} className="text-center uppercase tracking-wide">
+              {label}
+            </div>
+          ))}
+          {dayCells.map((cell, index) =>
+            cell ? (
+              <button
+                key={cell.key}
+                onClick={() => setActiveDateKey(cell.key)}
+                className={`h-10 rounded-lg text-sm font-semibold transition-all ${
+                  cell.hasWorkout ? 'text-white' : 'text-gray-600'
+                } ${activeDateKey === cell.key ? 'ring-2 ring-emerald-500/60' : ''}`}
+                style={{
+                  backgroundColor: cell.hasWorkout ? `rgba(34, 197, 94, ${0.15 + cell.intensity * 0.6})` : '#121212',
+                }}
+              >
+                {cell.day}
+              </button>
+            ) : (
+              <div key={`empty-${index}`} />
+            )
+          )}
+        </div>
+
+        <div className="border-t border-gray-800 p-5 overflow-y-auto">
+          <h4 className="text-sm font-bold text-white mb-3">Workouts</h4>
+          {activeLogs.length === 0 ? (
+            <div className="text-sm text-gray-500">No workouts logged for this day.</div>
+          ) : (
+            <div className="space-y-3">
+              {activeLogs.map((log) => (
+                <button
+                  key={log.id}
+                  onClick={() => onSelectLog(log)}
+                  className="w-full text-left bg-[#111111] border border-gray-800 rounded-xl p-3 hover:border-gray-700 transition-all"
+                >
+                  <div className="text-sm font-semibold text-white">{log.workoutName}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {new Date(log.completedAt).toLocaleDateString()} • Volume: {Math.round(calculateLogVolume(log))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2447,6 +2521,7 @@ const App: React.FC = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedHistoryMetric, setSelectedHistoryMetric] = useState<'volume' | 'reps'>('volume');
+  const [historyViewMode, setHistoryViewMode] = useState<'calendar' | 'last7days'>('last7days');
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -2940,15 +3015,20 @@ const App: React.FC = () => {
 
     try {
       await storage.saveWorkoutLog(workoutLogToSave);
+      console.log(`[Workout History] Successfully saved workout log "${workoutLogToSave.workoutName}"`);
+      
+      // Reload logs from storage to ensure consistency
       const updatedLogs = await storage.loadWorkoutLogs();
       // Filter out invalid/phantom workout logs - only keep completed workouts with actual exercise data
       const validLogs = updatedLogs.filter(isValidWorkoutLog);
       setWorkoutLogs(validLogs);
+      console.log(`[Workout History] Total workout logs after save: ${validLogs.length}`);
+      
       setIsWorkoutSaved(true);
       // Update completedWorkoutLog to reflect the saved version
       setCompletedWorkoutLog(workoutLogToSave);
     } catch (error) {
-      console.error('Error saving workout log:', error);
+      console.error('[Workout History] Error saving workout log:', error);
       alert('Failed to save workout. Please try again.');
     }
   };
@@ -3077,9 +3157,11 @@ const App: React.FC = () => {
         await storage.saveWorkout(newWorkout);
       }
       
-      // Reload workouts from storage
+      // Reload workouts from storage to ensure consistency
       const updatedWorkouts = await storage.loadWorkouts();
       setSavedWorkouts(updatedWorkouts);
+      
+      console.log(`[Saved Workouts] Successfully saved workout "${name}". Total saved workouts: ${updatedWorkouts.length}`);
       
       closeSaveModal();
       closeDrawer();
@@ -3087,8 +3169,8 @@ const App: React.FC = () => {
       // Show checkmark animation
       setShowCheckmarkAnimation(true);
     } catch (error) {
-      console.error('Error saving workout:', error);
-      // Optionally show user-facing error message here
+      console.error('[Saved Workouts] Error saving workout:', error);
+      alert('Failed to save workout. Please try again.');
     }
   };
 
@@ -3180,76 +3262,100 @@ const App: React.FC = () => {
     return customWorkouts.some(w => w.id === workoutId);
   };
 
-  // Load saved workouts on mount
+  // Load saved workouts on mount with proper error handling
   useEffect(() => {
-    storage.loadWorkouts().then(setSavedWorkouts).catch((error) => {
-      console.error('Error loading saved workouts:', error);
-      setSavedWorkouts([]);
-    });
+    const loadSavedWorkouts = async () => {
+      try {
+        console.log('[Saved Workouts] Loading saved workouts from storage...');
+        const workouts = await storage.loadWorkouts();
+        console.log(`[Saved Workouts] Loaded ${workouts.length} saved workouts from storage`);
+        setSavedWorkouts(workouts);
+      } catch (error) {
+        console.error('[Saved Workouts] Error loading saved workouts:', error);
+        console.error('[Saved Workouts] Failed to load saved workouts. Error details:', error);
+        // Set empty array on error to avoid showing stale data
+        setSavedWorkouts([]);
+      }
+    };
+    
+    loadSavedWorkouts();
   }, []);
 
   useEffect(() => {
-    storage.loadWorkoutLogs().then(async (logs) => {
-      console.log(`[Cleanup] Loaded ${logs.length} workout logs from storage`);
-      
-      // CRITICAL: Always validate and clean ALL logs on load
-      // This ensures users only see their actual tracked workouts
-      const validLogs = logs.filter(isValidWorkoutLog);
-      const invalidLogs = logs.filter(log => !isValidWorkoutLog(log));
-      
-      // If there are ANY invalid logs, delete them immediately
-      if (invalidLogs.length > 0) {
-        console.log(`[Cleanup] Found ${invalidLogs.length} invalid/phantom workout logs. Removing from storage...`);
-        for (const invalidLog of invalidLogs) {
-          try {
-            await storage.deleteWorkoutLog(invalidLog.id);
-          } catch (error) {
-            console.error(`[Cleanup] Failed to delete invalid log ${invalidLog.id}:`, error);
+    // Load workout logs on mount with proper error handling
+    const loadWorkoutHistory = async () => {
+      try {
+        console.log('[Workout History] Loading workout logs from storage...');
+        const logs = await storage.loadWorkoutLogs();
+        console.log(`[Workout History] Loaded ${logs.length} workout logs from storage`);
+        
+        // CRITICAL: Always validate and clean ALL logs on load
+        // This ensures users only see their actual tracked workouts
+        const validLogs = logs.filter(isValidWorkoutLog);
+        const invalidLogs = logs.filter(log => !isValidWorkoutLog(log));
+        
+        console.log(`[Workout History] Found ${validLogs.length} valid logs and ${invalidLogs.length} invalid logs`);
+        
+        // If there are ANY invalid logs, delete them immediately
+        if (invalidLogs.length > 0) {
+          console.log(`[Cleanup] Found ${invalidLogs.length} invalid/phantom workout logs. Removing from storage...`);
+          for (const invalidLog of invalidLogs) {
+            try {
+              await storage.deleteWorkoutLog(invalidLog.id);
+            } catch (error) {
+              console.error(`[Cleanup] Failed to delete invalid log ${invalidLog.id}:`, error);
+            }
+          }
+          console.log(`[Cleanup] Removed ${invalidLogs.length} invalid logs. ${validLogs.length} valid logs remaining.`);
+        }
+        
+        // Remove duplicates from valid logs - keep first occurrence of each unique workout
+        const seenIds = new Set<string>();
+        const seenKeys = new Set<string>();
+        const deduplicatedValidLogs: WorkoutLog[] = [];
+        const duplicateLogsToDelete: WorkoutLog[] = [];
+        
+        for (const log of validLogs) {
+          const key = `${log.completedAt}-${log.workoutName}`;
+          if (!seenIds.has(log.id) && !seenKeys.has(key)) {
+            seenIds.add(log.id);
+            seenKeys.add(key);
+            deduplicatedValidLogs.push(log);
+          } else {
+            // This is a duplicate - mark for deletion
+            duplicateLogsToDelete.push(log);
           }
         }
-        console.log(`[Cleanup] Removed ${invalidLogs.length} invalid logs. ${validLogs.length} valid logs remaining.`);
-      }
-      
-      // Remove duplicates from valid logs - keep first occurrence of each unique workout
-      const seenIds = new Set<string>();
-      const seenKeys = new Set<string>();
-      const deduplicatedValidLogs: WorkoutLog[] = [];
-      const duplicateLogsToDelete: WorkoutLog[] = [];
-      
-      for (const log of validLogs) {
-        const key = `${log.completedAt}-${log.workoutName}`;
-        if (!seenIds.has(log.id) && !seenKeys.has(key)) {
-          seenIds.add(log.id);
-          seenKeys.add(key);
-          deduplicatedValidLogs.push(log);
-        } else {
-          // This is a duplicate - mark for deletion
-          duplicateLogsToDelete.push(log);
-        }
-      }
-      
-      // Delete duplicate logs
-      if (duplicateLogsToDelete.length > 0) {
-        console.log(`[Cleanup] Found ${duplicateLogsToDelete.length} duplicate logs. Removing duplicates...`);
-        let deletedCount = 0;
-        for (const duplicate of duplicateLogsToDelete) {
-          try {
-            await storage.deleteWorkoutLog(duplicate.id);
-            deletedCount++;
-          } catch (error) {
-            console.error(`[Cleanup] Failed to delete duplicate log ${duplicate.id}:`, error);
+        
+        // Delete duplicate logs
+        if (duplicateLogsToDelete.length > 0) {
+          console.log(`[Cleanup] Found ${duplicateLogsToDelete.length} duplicate logs. Removing duplicates...`);
+          let deletedCount = 0;
+          for (const duplicate of duplicateLogsToDelete) {
+            try {
+              await storage.deleteWorkoutLog(duplicate.id);
+              deletedCount++;
+            } catch (error) {
+              console.error(`[Cleanup] Failed to delete duplicate log ${duplicate.id}:`, error);
+            }
           }
+          console.log(`[Cleanup] Removed ${deletedCount} duplicate logs.`);
         }
-        console.log(`[Cleanup] Removed ${deletedCount} duplicate logs.`);
+        
+        // Final count - this is what users will see
+        console.log(`[Workout History] Complete. ${deduplicatedValidLogs.length} valid, unique workout logs remaining.`);
+        setWorkoutLogs(deduplicatedValidLogs);
+      } catch (error) {
+        console.error('[Workout History] Error loading workout logs:', error);
+        // Don't set empty array on error - try to preserve existing state if possible
+        // Only set empty if we're sure there's a critical error
+        console.error('[Workout History] Failed to load workout history. Error details:', error);
+        // Still set empty array to avoid showing stale data, but log the error clearly
+        setWorkoutLogs([]);
       }
-      
-      // Final count - this is what users will see
-      console.log(`[Cleanup] Complete. ${deduplicatedValidLogs.length} valid, unique workout logs remaining.`);
-      setWorkoutLogs(deduplicatedValidLogs);
-    }).catch((error) => {
-      console.error('Error loading workout logs:', error);
-      setWorkoutLogs([]);
-    });
+    };
+    
+    loadWorkoutHistory();
   }, []);
 
   const handleViewWorkoutSelection = () => {
@@ -3501,83 +3607,124 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
-                  <p className="text-sm text-gray-500">
-                    {historyPeriod === 'day' ? 'Last 7 days' : historyPeriod === 'week' ? 'Weekly trends' : 'Monthly trends'}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleOpenCalendar()}
-                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs uppercase tracking-wider rounded-xl"
-                  >
-                    Open Calendar
-                  </button>
-                  <button
-                    onClick={handleClearAllWorkoutLogs}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
-                  >
-                    Clear Data
-                  </button>
-                </div>
+              {/* Navigation Tabs */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setHistoryViewMode('last7days')}
+                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
+                    historyViewMode === 'last7days'
+                      ? 'bg-white text-black shadow-lg shadow-white/20'
+                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                  }`}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  onClick={() => setHistoryViewMode('calendar')}
+                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
+                    historyViewMode === 'calendar'
+                      ? 'bg-white text-black shadow-lg shadow-white/20'
+                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                  }`}
+                >
+                  Calendar
+                </button>
               </div>
 
-              <div className="space-y-4">
-                <TimeSeriesChart
-                  title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
-                  yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
-                  colorClassName="from-emerald-500 to-emerald-400"
-                  metric={selectedHistoryMetric}
-                  data={
-                    selectedHistoryMetric === 'volume'
-                      ? historyVolumeData
-                      : historyRepsData
-                  }
-                  onPointSelect={(date) => handleOpenCalendar(date)}
-                  width={800}
-                  height={400}
-                  period={historyPeriod}
-                />
-                
-                <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
-                  <button
-                    onClick={() => setSelectedHistoryMetric('volume')}
-                    className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                      selectedHistoryMetric === 'volume'
-                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                        : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                    }`}
-                  >
-                    Volume
-                  </button>
-                  <button
-                    onClick={() => setSelectedHistoryMetric('reps')}
-                    className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                      selectedHistoryMetric === 'reps'
-                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                        : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                    }`}
-                  >
-                    Reps
-                  </button>
-                </div>
-              </div>
+              {/* Last 7 Days View */}
+              {historyViewMode === 'last7days' && (
+                <>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div>
+                      <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
+                      <p className="text-sm text-gray-500">Last 7 days</p>
+                    </div>
+                    <button
+                      onClick={handleClearAllWorkoutLogs}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                    >
+                      Clear Data
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <TimeSeriesChart
+                      title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
+                      yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
+                      colorClassName="from-emerald-500 to-emerald-400"
+                      metric={selectedHistoryMetric}
+                      data={
+                        selectedHistoryMetric === 'volume'
+                          ? historyVolumeData
+                          : historyRepsData
+                      }
+                      onPointSelect={(date) => {
+                        setHistoryViewMode('calendar');
+                        setCalendarSelectedDate(date);
+                      }}
+                      width={800}
+                      height={400}
+                      period={historyPeriod}
+                    />
+                    
+                    <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
+                      <button
+                        onClick={() => setSelectedHistoryMetric('volume')}
+                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                          selectedHistoryMetric === 'volume'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                        }`}
+                      >
+                        Volume
+                      </button>
+                      <button
+                        onClick={() => setSelectedHistoryMetric('reps')}
+                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                          selectedHistoryMetric === 'reps'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                        }`}
+                      >
+                        Reps
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Calendar View */}
+              {historyViewMode === 'calendar' && (
+                <>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6">
+                    <div>
+                      <h2 className="text-2xl md:text-3xl font-bold">Calendar</h2>
+                      <p className="text-sm text-gray-500">View workouts by date</p>
+                    </div>
+                    <button
+                      onClick={handleClearAllWorkoutLogs}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                    >
+                      Clear Data
+                    </button>
+                  </div>
+                  <div className="bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden">
+                    <CalendarView
+                      isOpen={true}
+                      onClose={() => {}}
+                      workoutLogs={workoutLogs}
+                      selectedDate={calendarSelectedDate}
+                      onSelectLog={(log) => {
+                        setSelectedWorkoutLog(log);
+                      }}
+                      inline={true}
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
         </main>
-
-        <CalendarView
-          isOpen={isCalendarOpen}
-          onClose={handleCloseCalendar}
-          workoutLogs={workoutLogs}
-          selectedDate={calendarSelectedDate}
-          onSelectLog={(log) => {
-            setSelectedWorkoutLog(log);
-            handleCloseCalendar();
-          }}
-        />
 
         {selectedWorkoutLog && (
           <WorkoutLogDetailModal
