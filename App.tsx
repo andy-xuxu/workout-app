@@ -181,13 +181,14 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   height: propHeight,
   period = 'day',
 }) => {
+  const isMobile = useIsMobile();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const width = propWidth ?? 320;
-  const height = propHeight ?? 140;
-  const paddingLeft = 50;
+  const height = isMobile ? (propHeight ? propHeight * 1.2 : 240) : (propHeight ?? 140);
+  const paddingLeft = isMobile ? 60 : 50;
   const paddingRight = 20;
   const paddingTop = 20;
-  const paddingBottom = 50;
+  const paddingBottom = isMobile ? 60 : 50;
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
@@ -405,7 +406,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                   y={tick.y + 4}
                   textAnchor="end"
                   fill="#9ca3af"
-                  fontSize="12"
+                  fontSize={isMobile ? "15" : "12"}
                   className="font-medium"
                 >
                   {formatYAxisValue(tick.value)}
@@ -444,10 +445,10 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                   {shouldShowLabel && (
                     <text
                       x={x + barWidth / 2}
-                      y={paddingTop + chartHeight + 20}
+                      y={paddingTop + chartHeight + (isMobile ? 25 : 20)}
                       textAnchor="middle"
                       fill="#9ca3af"
-                      fontSize="12"
+                      fontSize={isMobile ? "15" : "12"}
                       className="font-medium"
                     >
                       {formatDate(point.date)}
@@ -3901,6 +3902,7 @@ const App: React.FC = () => {
         />
       )}
 
+      <MobileTabBar />
     </div>
   );
 };
