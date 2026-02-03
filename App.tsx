@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout, WorkoutLog, ExerciseLog, SetLog } from './types';
 import { storage } from './utils/storage';
-import { aggregateLogsByPeriod, calculateExercisePBs, formatChartData, pickSmartPeriod, type ExercisePB } from './utils/analytics';
+import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod } from './utils/analytics';
 
 type AppMode =
   | 'landing'
@@ -138,8 +138,12 @@ interface TimeSeriesChartProps {
   yAxisLabel: string;
   colorClassName: string;
   data: TimeSeriesPoint[];
+  metric?: 'volume' | 'reps';
   onDoubleClick?: () => void;
   onPointSelect?: (date: Date) => void;
+  width?: number;
+  height?: number;
+  period?: 'day' | 'week' | 'month';
 }
 
 // Helper function to extract colors from Tailwind gradient classes
@@ -170,36 +174,146 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   yAxisLabel,
   colorClassName,
   data,
+  metric,
   onDoubleClick,
   onPointSelect,
+  width: propWidth,
+  height: propHeight,
+  period = 'day',
 }) => {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const width = 320;
-  const height = 140;
-  const padding = 24;
+  const width = propWidth ?? 320;
+  const height = propHeight ?? 140;
+  const paddingLeft = 50;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 50;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
 
   const values = data.map((point) => point.value);
-  const minValue = values.length ? Math.min(...values) : 0;
+  const minValue = 0;
   const maxValue = values.length ? Math.max(...values) : 0;
   const range = Math.max(1, maxValue - minValue);
   const gradientId = `chartGradient-${title.replace(/\s+/g, '-').toLowerCase()}`;
   const gradientColors = getGradientColors(colorClassName);
 
-  const points = data.map((point, index) => {
-    const x = padding + (index / Math.max(1, data.length - 1)) * (width - padding * 2);
-    const y = height - padding - ((point.value - minValue) / range) * (height - padding * 2);
-    return { x, y, point };
-  });
+  // Calculate bar positions and dimensions
+  const barWidth = data.length > 0 ? Math.max(4, (chartWidth / data.length) * 0.7) : 0;
+  const barSpacing = data.length > 0 ? chartWidth / data.length : 0;
 
-  const linePath = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    .join(' ');
+  const formatDate = (date: Date): string => {
+    if (period === 'day') {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else if (period === 'week') {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+  };
 
-  const formatTooltipValue = (value: number) => {
-    if (yAxisLabel.toLowerCase().includes('min')) return `${Math.round(value)} min`;
-    if (yAxisLabel.toLowerCase().includes('sec')) return `${Math.round(value)} sec`;
+  // Format Y-axis value based on metric type
+  const formatYAxisValue = (value: number): string => {
+    if (metric === 'volume') {
+      // Format volume with K notation
+      if (value >= 1000) {
+        const kValue = value / 1000;
+        // Round to nearest 0.5K for cleaner labels
+        const rounded = Math.round(kValue * 2) / 2;
+        return rounded % 1 === 0 ? `${rounded}K` : `${rounded}K`;
+      }
+      return Math.round(value).toString();
+    } else if (metric === 'reps') {
+      // Format reps - already rounded to increments of 10
+      return Math.round(value).toString();
+    }
+    // Default formatting
     return Math.round(value).toLocaleString();
   };
+
+  const formatTooltipValue = (value: number) => {
+    if (metric === 'volume') {
+      if (value >= 1000) {
+        const kValue = value / 1000;
+        return kValue % 1 === 0 ? `${kValue}K` : `${kValue.toFixed(1)}K`;
+      }
+      return Math.round(value).toLocaleString();
+    }
+    return Math.round(value).toLocaleString();
+  };
+
+  // Generate Y-axis labels with smart intervals based on metric type
+  const generateYAxisLabels = () => {
+    const yAxisTicks = 5;
+    
+    if (metric === 'volume') {
+      // For volume: use K notation with smart intervals
+      // Round maxValue up to nearest nice interval
+      const maxK = maxValue / 1000;
+      let niceMaxK: number;
+      
+      if (maxK <= 0.5) {
+        niceMaxK = 0.5;
+      } else if (maxK <= 1) {
+        niceMaxK = 1;
+      } else if (maxK <= 2) {
+        niceMaxK = 2;
+      } else if (maxK <= 5) {
+        niceMaxK = 5;
+      } else {
+        // Round up to nearest 1K, 2K, 5K, 10K, etc.
+        const magnitude = Math.pow(10, Math.floor(Math.log10(maxK)));
+        const normalized = maxK / magnitude;
+        let multiplier: number;
+        if (normalized <= 1) multiplier = 1;
+        else if (normalized <= 2) multiplier = 2;
+        else if (normalized <= 5) multiplier = 5;
+        else multiplier = 10;
+        niceMaxK = magnitude * multiplier;
+      }
+      
+      const niceMaxValue = niceMaxK * 1000;
+      const interval = niceMaxValue / (yAxisTicks - 1);
+      
+      return Array.from({ length: yAxisTicks }, (_, i) => {
+        const value = i * interval;
+        return {
+          value,
+          y: paddingTop + chartHeight - (i / (yAxisTicks - 1)) * chartHeight,
+        };
+      });
+    } else if (metric === 'reps') {
+      // For reps: use increments of 10
+      // Round maxValue up to nearest multiple of 10
+      const niceMaxValue = Math.ceil(maxValue / 10) * 10;
+      // Use increments that divide nicely into 5 ticks
+      const interval = Math.max(10, Math.ceil(niceMaxValue / (yAxisTicks - 1) / 10) * 10);
+      const adjustedMax = interval * (yAxisTicks - 1);
+      
+      return Array.from({ length: yAxisTicks }, (_, i) => {
+        const value = i * interval;
+        return {
+          value,
+          y: paddingTop + chartHeight - (i / (yAxisTicks - 1)) * chartHeight,
+        };
+      });
+    } else {
+      // Default: linear scale
+      return Array.from({ length: yAxisTicks }, (_, i) => {
+        const value = minValue + (maxValue - minValue) * (i / (yAxisTicks - 1));
+        return {
+          value: Math.round(value),
+          y: paddingTop + chartHeight - (i / (yAxisTicks - 1)) * chartHeight,
+        };
+      });
+    }
+  };
+
+  const yAxisLabels = generateYAxisLabels();
+  
+  // Update range for bar height calculation based on actual Y-axis max
+  const actualMaxValue = yAxisLabels[yAxisLabels.length - 1]?.value ?? maxValue;
+  const actualRange = Math.max(1, actualMaxValue - minValue);
 
   return (
     <div
@@ -211,48 +325,117 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <h3 className="text-sm font-bold text-white">{title}</h3>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
         </div>
-        <div className={`h-2 w-10 rounded-full bg-gradient-to-r ${colorClassName}`} />
       </div>
 
       {data.length === 0 ? (
-        <div className="h-[160px] flex items-center justify-center text-gray-600 text-sm">
+        <div className="flex items-center justify-center text-gray-600 text-sm" style={{ height: `${height}px` }}>
           No data yet
         </div>
       ) : (
         <div className="relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[160px]">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height: `${height}px` }}>
             <defs>
-              <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="0">
+              <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor={gradientColors.from} />
                 <stop offset="100%" stopColor={gradientColors.to} />
               </linearGradient>
             </defs>
-            <path
-              d={linePath}
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeWidth="2.5"
-              strokeLinecap="round"
+            
+            {/* Y-axis line */}
+            <line
+              x1={paddingLeft}
+              y1={paddingTop}
+              x2={paddingLeft}
+              y2={paddingTop + chartHeight}
+              stroke="#374151"
+              strokeWidth="1"
             />
-            {points.map((item, index) => (
-              <circle
-                key={`${item.point.date.toISOString()}-${index}`}
-                cx={item.x}
-                cy={item.y}
-                r={hoverIndex === index ? 4 : 3}
-                fill="#e5e7eb"
-                className="transition-all duration-150"
-                onMouseEnter={() => setHoverIndex(index)}
-                onMouseLeave={() => setHoverIndex(null)}
-                onClick={() => onPointSelect?.(item.point.date)}
-              />
+            
+            {/* X-axis line */}
+            <line
+              x1={paddingLeft}
+              y1={paddingTop + chartHeight}
+              x2={paddingLeft + chartWidth}
+              y2={paddingTop + chartHeight}
+              stroke="#374151"
+              strokeWidth="1"
+            />
+            
+            {/* Y-axis labels */}
+            {yAxisLabels.map((tick, i) => (
+              <g key={`y-tick-${i}`}>
+                <line
+                  x1={paddingLeft - 5}
+                  y1={tick.y}
+                  x2={paddingLeft}
+                  y2={tick.y}
+                  stroke="#374151"
+                  strokeWidth="1"
+                />
+                <text
+                  x={paddingLeft - 10}
+                  y={tick.y + 4}
+                  textAnchor="end"
+                  fill="#9ca3af"
+                  fontSize="10"
+                  className="font-medium"
+                >
+                  {formatYAxisValue(tick.value)}
+                </text>
+              </g>
             ))}
+            
+            {/* Bars */}
+            {data.map((point, index) => {
+              const barHeight = (point.value / actualRange) * chartHeight;
+              const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
+              const y = paddingTop + chartHeight - barHeight;
+              const isHovered = hoverIndex === index;
+              
+              // Show every Nth label to avoid crowding (show all if <= 10, otherwise show every 2nd or 3rd)
+              const labelInterval = data.length <= 10 ? 1 : data.length <= 20 ? 2 : Math.ceil(data.length / 10);
+              const shouldShowLabel = index % labelInterval === 0 || index === data.length - 1;
+              
+              return (
+                <g key={`bar-${point.date.toISOString()}-${index}`}>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barHeight}
+                    fill={`url(#${gradientId})`}
+                    rx="2"
+                    className="transition-all duration-150 cursor-pointer"
+                    style={{ opacity: isHovered ? 1 : 0.8 }}
+                    onMouseEnter={() => setHoverIndex(index)}
+                    onMouseLeave={() => setHoverIndex(null)}
+                    onClick={() => onPointSelect?.(point.date)}
+                  />
+                  
+                  {/* X-axis label */}
+                  {shouldShowLabel && (
+                    <text
+                      x={x + barWidth / 2}
+                      y={paddingTop + chartHeight + 20}
+                      textAnchor="middle"
+                      fill="#9ca3af"
+                      fontSize="9"
+                      className="font-medium"
+                    >
+                      {formatDate(point.date)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
           </svg>
-          {hoverIndex !== null && points[hoverIndex] && (
+          
+          {/* Tooltip */}
+          {hoverIndex !== null && data[hoverIndex] && (
             <div className="absolute right-3 top-2 bg-black/80 text-white text-[10px] px-2 py-1 rounded-lg border border-gray-700">
-              <div className="font-semibold">{formatTooltipValue(points[hoverIndex].point.value)}</div>
+              <div className="font-semibold">{formatTooltipValue(data[hoverIndex].value)}</div>
               <div className="text-gray-400">
-                {points[hoverIndex].point.date.toLocaleDateString()}
+                {data[hoverIndex].date.toLocaleDateString()}
               </div>
             </div>
           )}
@@ -404,7 +587,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 >
                   <div className="text-sm font-semibold text-white">{log.workoutName}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {new Date(log.completedAt).toLocaleDateString()} • Volume: {Math.round(calculateLogVolume(log))} | Duration: {log.durationSeconds ? `${Math.round(log.durationSeconds / 60)} min` : 'N/A'}
+                    {new Date(log.completedAt).toLocaleDateString()} • Volume: {Math.round(calculateLogVolume(log))}
                   </div>
                 </button>
               ))}
@@ -416,134 +599,63 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   );
 };
 
-interface PersonalBestsProps {
-  pbs: ExercisePB[];
-}
-
-const PersonalBests: React.FC<PersonalBestsProps> = ({ pbs }) => {
-  return (
-    <div className="bg-[#111111] border border-gray-800 rounded-2xl p-5 shadow-xl">
-      <h3 className="text-lg font-bold text-white mb-4">Personal Bests</h3>
-      {pbs.length === 0 ? (
-        <div className="text-sm text-gray-500">No personal bests yet.</div>
-      ) : (
-        <div className="space-y-4">
-          {pbs.map((pb) => (
-            <div key={pb.exerciseId} className="border border-gray-800 rounded-xl p-4 bg-[#0f0f0f]">
-              <div className="text-sm font-semibold text-white mb-2">{pb.exerciseName}</div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-400">
-                <div>
-                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Weight</div>
-                  <div className="text-sm text-white">
-                    {pb.maxWeight?.value ?? 0} {pb.maxWeight ? '' : '—'}
-                  </div>
-                  {pb.maxWeight && (
-                    <div className="text-[10px] text-gray-500">{pb.maxWeight.date.toLocaleDateString()}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Reps</div>
-                  <div className="text-sm text-white">{pb.maxReps?.value ?? 0}</div>
-                  {pb.maxReps && (
-                    <div className="text-[10px] text-gray-500">{pb.maxReps.date.toLocaleDateString()}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Volume</div>
-                  <div className="text-sm text-white">{pb.maxVolume?.value ?? 0}</div>
-                  {pb.maxVolume && (
-                    <div className="text-[10px] text-gray-500">{pb.maxVolume.date.toLocaleDateString()}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface ActivityFeedProps {
-  workoutLogs: WorkoutLog[];
-  initialCount?: number;
-  loadMoreCount?: number;
-  onSelectLog: (log: WorkoutLog) => void;
-}
-
 // Helper function to validate if a workout log is complete and valid
 const isValidWorkoutLog = (log: WorkoutLog): boolean => {
+  // Must have required fields
+  if (!log || !log.id || !log.workoutName || !log.completedAt) {
+    return false;
+  }
+  
+  // completedAt must be a valid timestamp (positive number)
+  if (typeof log.completedAt !== 'number' || log.completedAt <= 0) {
+    return false;
+  }
+  
   // Must have exercises array with at least one exercise
   if (!log.exercises || !Array.isArray(log.exercises) || log.exercises.length === 0) {
     return false;
   }
   
-  // Each exercise must have at least one set with reps > 0
-  const hasValidSets = log.exercises.some(exercise => 
-    exercise.sets && 
-    Array.isArray(exercise.sets) && 
-    exercise.sets.length > 0 &&
-    exercise.sets.some(set => set.reps > 0)
-  );
+  // Calculate total reps to ensure workout has meaningful data
+  let totalReps = 0;
+  let hasValidExercise = false;
   
-  return hasValidSets;
+  for (const exercise of log.exercises) {
+    if (!exercise || !exercise.exerciseId || !exercise.exerciseName) {
+      continue;
+    }
+    
+    if (!exercise.sets || !Array.isArray(exercise.sets) || exercise.sets.length === 0) {
+      continue;
+    }
+    
+    // Check if exercise has at least one valid set
+    const exerciseHasValidSet = exercise.sets.some(set => 
+      set && 
+      typeof set.reps === 'number' && 
+      set.reps > 0 &&
+      typeof set.completedAt === 'number' &&
+      set.completedAt > 0
+    );
+    
+    if (exerciseHasValidSet) {
+      hasValidExercise = true;
+      // Sum up reps for this exercise
+      exercise.sets.forEach(set => {
+        if (set && typeof set.reps === 'number' && set.reps > 0) {
+          totalReps += set.reps;
+        }
+      });
+    }
+  }
+  
+  // Require at least one valid exercise AND meaningful workout data
+  // Require at least 10 reps minimum to filter out accidental/incomplete entries
+  const hasMinimumReps = totalReps >= 10;
+  
+  // Must have valid exercise AND at least 10 reps
+  return hasValidExercise && hasMinimumReps;
 };
-
-const ActivityFeed: React.FC<ActivityFeedProps> = ({
-  workoutLogs,
-  initialCount = 3,
-  loadMoreCount = 5,
-  onSelectLog,
-}) => {
-  const [visibleCount, setVisibleCount] = useState(initialCount);
-  // Filter out invalid/phantom workout logs - only show completed workouts with actual exercise data
-  const validLogs = workoutLogs.filter(isValidWorkoutLog);
-  const sortedLogs = [...validLogs].sort((a, b) => b.completedAt - a.completedAt);
-  const visibleLogs = sortedLogs.slice(0, visibleCount);
-  const hasMore = visibleCount < sortedLogs.length;
-
-  return (
-    <div className="bg-[#111111] border border-gray-800 rounded-2xl p-5 shadow-xl">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-white">Recent Activity</h3>
-        <span className="text-xs text-gray-500">{sortedLogs.length} workouts</span>
-      </div>
-      {visibleLogs.length === 0 ? (
-        <div className="text-sm text-gray-500">No workouts logged yet.</div>
-      ) : (
-        <div className="space-y-3">
-          {visibleLogs.map((log) => (
-            <button
-              key={log.id}
-              onClick={() => onSelectLog(log)}
-              className="w-full text-left bg-[#0f0f0f] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-white">{log.workoutName}</div>
-                <div className="text-xs text-gray-500">{new Date(log.completedAt).toLocaleDateString()}</div>
-              </div>
-              <div className="text-xs text-gray-500 mt-2 flex flex-wrap gap-3">
-                <span>{log.exercises.length} exercises</span>
-                <span>{Math.round(calculateLogVolume(log))} volume</span>
-                <span>{calculateTotalReps(log)} reps</span>
-                {log.durationSeconds ? <span>{Math.round(log.durationSeconds / 60)} min</span> : null}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-      {hasMore && (
-        <button
-          onClick={() => setVisibleCount((prev) => prev + loadMoreCount)}
-          className="mt-4 w-full py-2 text-xs uppercase tracking-wider bg-gray-800 hover:bg-gray-700 text-white rounded-xl"
-        >
-          Load {loadMoreCount} more
-        </button>
-      )}
-    </div>
-  );
-};
-
 
 // Mobile detection hook
 const useIsMobile = (): boolean => {
@@ -1498,9 +1610,8 @@ interface WorkoutCarouselProps {
   onAddSet: (workoutId: string) => void;
   onUpdateSet: (workoutId: string, setId: string, field: 'weight' | 'reps', value: string) => void;
   onRemoveSet: (workoutId: string, setId: string) => void;
-  onMarkComplete: (workoutId: string) => void;
+  onMarkComplete: (workoutId: string, isLastExercise?: boolean) => void;
   onBack: () => void;
-  onWorkoutComplete: () => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
   isMobile: boolean;
 }
@@ -1519,7 +1630,6 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   onRemoveSet,
   onMarkComplete,
   onBack,
-  onWorkoutComplete,
   getCategoryStyles,
   isMobile,
 }) => {
@@ -1533,12 +1643,6 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   const total = workouts.length;
   const completedCount = completedExercises.size;
   const allComplete = total > 0 && completedCount === total;
-
-  useEffect(() => {
-    if (allComplete) {
-      onWorkoutComplete();
-    }
-  }, [allComplete, onWorkoutComplete]);
 
   const goNext = useCallback(() => {
     if (currentIndex < total - 1) {
@@ -1671,12 +1775,29 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
                   onMarkComplete={() => {
                     if (isCurrentCard && !isAnimatingOut) {
                       const isAlreadyCompleted = completedExercises.has(workout.id);
+                      const isLastExercise = currentIndex === total - 1;
+                      
+                      // Always call onMarkComplete to update the log with current data
+                      // Pass isLastExercise flag so summary only triggers on last tile
+                      onMarkComplete(workout.id, isLastExercise);
+                      
+                      // If it's the last exercise, skip animation and go straight to summary
+                      if (isLastExercise) {
+                        // Summary will be triggered by handleCompleteExercise
+                        // No card flip animation needed
+                        return;
+                      }
+                      
+                      // For non-final tiles: do card flip animation
                       setAnimatingOutId(workout.id);
+                      
                       // Only add to justCompletedIds if not already completed (to show green animation)
+                      // If already completed (editing), just do the flip without green checkmark
                       if (!isAlreadyCompleted) {
                         setJustCompletedIds((prev) => new Set(prev).add(workout.id));
-                        onMarkComplete(workout.id);
                       }
+                      
+                      // Card flip animation for non-final tiles
                       setTimeout(() => {
                         setAnimatingOutId(null);
                         goNext();
@@ -1751,12 +1872,16 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
 // Workout Completion Celebration Component
 interface WorkoutCompletionCelebrationProps {
   workoutLog: WorkoutLog;
+  onSave: () => void;
   onDone: () => void;
+  isSaved: boolean;
 }
 
 const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> = ({
   workoutLog,
+  onSave,
   onDone,
+  isSaved,
 }) => {
   const [showContent, setShowContent] = useState(false);
   const [showMetrics, setShowMetrics] = useState(false);
@@ -1873,13 +1998,23 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
           )}
         </div>
 
-        {/* Done Button */}
-        <button
-          onClick={onDone}
-          className={`px-8 py-4 bg-white text-black rounded-2xl font-bold transition-all duration-500 delay-600 hover:bg-gray-100 active:scale-95 ${showContent ? 'opacity-100' : 'opacity-0'}`}
-        >
-          Back to Workout Selection
-        </button>
+        {/* Action Buttons */}
+        <div className={`w-full flex flex-col gap-3 transition-all duration-500 delay-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+          {!isSaved && (
+            <button
+              onClick={onSave}
+              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg shadow-lg shadow-green-500/30 transition-all duration-200 active:scale-95"
+            >
+              Save Workout
+            </button>
+          )}
+          <button
+            onClick={onDone}
+            className={`px-8 py-4 ${isSaved ? 'bg-white text-black' : 'bg-gray-800 text-white hover:bg-gray-700'} rounded-2xl font-bold transition-all duration-200 active:scale-95`}
+          >
+            {isSaved ? 'Back to Workout Selection' : 'Go Back'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2228,7 +2363,6 @@ const App: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showCheckmarkAnimation, setShowCheckmarkAnimation] = useState(false);
   const [activeWorkout, setActiveWorkout] = useState<{ name: string; workouts: Workout[] } | null>(null);
-  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [trackingByExercise, setTrackingByExercise] = useState<Record<string, ExerciseTrackingState>>({});
   const [exerciseLogsById, setExerciseLogsById] = useState<Record<string, ExerciseLog>>({});
@@ -2237,8 +2371,10 @@ const App: React.FC = () => {
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
   const [completedWorkoutLog, setCompletedWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [isWorkoutSaved, setIsWorkoutSaved] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedHistoryMetric, setSelectedHistoryMetric] = useState<'volume' | 'reps'>('volume');
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -2296,15 +2432,8 @@ const App: React.FC = () => {
     () => aggregateLogsByPeriod(workoutLogs, historyPeriod),
     [workoutLogs, historyPeriod]
   );
-  const historyDurationData = useMemo(() => {
-    return formatChartData(historyAggregated, 'duration').map((point) => ({
-      date: point.date,
-      value: Math.round(point.value / 60),
-    }));
-  }, [historyAggregated]);
   const historyVolumeData = useMemo(() => formatChartData(historyAggregated, 'volume'), [historyAggregated]);
   const historyRepsData = useMemo(() => formatChartData(historyAggregated, 'reps'), [historyAggregated]);
-  const historyPbs = useMemo(() => calculateExercisePBs(workoutLogs), [workoutLogs]);
 
   // Get tile IDs for prominent tile detection
   const tileIds = useMemo(() => {
@@ -2383,12 +2512,12 @@ const App: React.FC = () => {
     setViewingWorkoutId(null);
     setOriginalWorkout(null);
     setActiveWorkout(null);
-    setWorkoutStartTime(null);
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
     setShowWorkoutCompletion(false);
     setCompletedWorkoutLog(null);
+    setIsWorkoutSaved(false);
     setWasDrawerOpenBeforeModal(false);
     setSelectedWorkoutLog(null);
     closeDrawer();
@@ -2397,7 +2526,6 @@ const App: React.FC = () => {
   const handleStartWorkout = (item: WorkoutSelectionItem) => {
     if (item.workouts.length === 0) return;
     setActiveWorkout({ name: item.name, workouts: item.workouts });
-    setWorkoutStartTime(Date.now());
     setCompletedExercises(new Set());
     const trackingState: Record<string, ExerciseTrackingState> = {};
     item.workouts.forEach((workout) => {
@@ -2406,43 +2534,83 @@ const App: React.FC = () => {
     setTrackingByExercise(trackingState);
     setExerciseLogsById({});
     setShowWorkoutCompletion(false);
+    setCompletedWorkoutLog(null);
+    setIsWorkoutSaved(false);
     setAppMode('workout-active');
   };
 
   const buildExerciseLog = (workout: Workout, tracking: ExerciseTrackingState, completedAt: number): ExerciseLog => {
-    const detailedSets = tracking.sets.reduce<SetLog[]>((acc, set, idx) => {
-      const reps = parseNumber(set.reps);
-      if (reps === null || reps <= 0) return acc;
-      const weight = parseNumber(set.weight);
-      const next: SetLog = {
-        setNumber: idx + 1,
-        reps,
-        completedAt,
-      };
-      // Only include weight if it's greater than 0
-      if (weight !== null && weight > 0) {
-        next.weight = weight;
+    let sets: SetLog[] = [];
+    
+    // Handle quick mode: if mode is 'quick' and sets array is empty or has no valid reps, use quick mode data
+    if (tracking.mode === 'quick') {
+      const quickSets = parseNumber(tracking.quickSets);
+      const quickReps = parseNumber(tracking.quickReps);
+      const quickWeight = parseNumber(tracking.quickWeight);
+      
+      // If quick mode has valid data, use it
+      if (quickSets !== null && quickSets > 0 && quickReps !== null && quickReps > 0) {
+        for (let i = 0; i < quickSets; i++) {
+          const setLog: SetLog = {
+            setNumber: i + 1,
+            reps: quickReps,
+            completedAt,
+          };
+          if (quickWeight !== null && quickWeight > 0) {
+            setLog.weight = quickWeight;
+          }
+          sets.push(setLog);
+        }
       }
-      acc.push(next);
-      return acc;
-    }, []);
+    }
+    
+    // Handle detailed mode: process sets array
+    // If we already have sets from quick mode, use those; otherwise build from detailed sets
+    if (sets.length === 0) {
+      sets = tracking.sets.reduce<SetLog[]>((acc, set, idx) => {
+        const reps = parseNumber(set.reps);
+        if (reps === null || reps <= 0) return acc;
+        const weight = parseNumber(set.weight);
+        const next: SetLog = {
+          setNumber: idx + 1,
+          reps,
+          completedAt,
+        };
+        // Only include weight if it's greater than 0
+        if (weight !== null && weight > 0) {
+          next.weight = weight;
+        }
+        acc.push(next);
+        return acc;
+      }, []);
+    }
 
     return {
       exerciseId: workout.id,
       exerciseName: workout.name,
-      sets: detailedSets,
+      sets,
     };
   };
 
-  const handleCompleteExercise = (workoutId: string) => {
+  const handleCompleteExercise = (workoutId: string, isLastExercise: boolean = false) => {
     if (!activeWorkout) return;
     const workout = activeWorkout.workouts.find((item) => item.id === workoutId);
     if (!workout) return;
     const tracking = trackingByExercise[workoutId] || createDefaultTrackingState();
     const completedAt = Date.now();
+    // Always rebuild the log with current tracking data, even if already completed
+    // This ensures the summary shows the latest data if user clicks "Done" again
     const log = buildExerciseLog(workout, tracking, completedAt);
     setExerciseLogsById((prev) => ({ ...prev, [workoutId]: log }));
-    setCompletedExercises((prev) => new Set(prev).add(workoutId));
+    const newCompletedExercises = new Set(completedExercises);
+    newCompletedExercises.add(workoutId);
+    setCompletedExercises(newCompletedExercises);
+    
+    // Only show summary if clicking "Done" on the LAST exercise
+    // This prevents summary from triggering when clicking "Done" on any tile when all are already complete
+    if (isLastExercise) {
+      handleShowWorkoutSummary();
+    }
   };
 
   const handleUpdateQuick = (
@@ -2557,53 +2725,128 @@ const App: React.FC = () => {
     setShowWorkoutCompletion(false);
   };
 
-  const handleWorkoutComplete = async () => {
-    if (!activeWorkout) {
-      setShowWorkoutCompletion(true);
-      return;
-    }
+  const handleShowWorkoutSummary = () => {
+    if (!activeWorkout) return;
 
     const completedAt = Date.now();
-    const durationSeconds = workoutStartTime ? Math.max(0, Math.round((completedAt - workoutStartTime) / 1000)) : undefined;
 
+    // Always rebuild exercises from current trackingByExercise state to ensure latest data
+    // This ensures the summary reflects any changes made, even if exerciseLogsById hasn't updated yet
     const exercises: ExerciseLog[] = activeWorkout.workouts.map((workout) => {
-      return (
-        exerciseLogsById[workout.id] ||
-        buildExerciseLog(workout, trackingByExercise[workout.id] || createDefaultTrackingState(), completedAt)
-      );
+      const currentTracking = trackingByExercise[workout.id] || createDefaultTrackingState();
+      // Always rebuild from current tracking state to get latest data
+      return buildExerciseLog(workout, currentTracking, completedAt);
     });
 
     const workoutLog: WorkoutLog = {
       id: `${completedAt}-${activeWorkout.name}`,
       workoutName: activeWorkout.name,
       completedAt,
-      durationSeconds,
       exercises,
     };
 
+    // Show summary page (even if invalid - user can still review)
+    setCompletedWorkoutLog(workoutLog);
+    setIsWorkoutSaved(false);
+    setShowWorkoutCompletion(true);
+  };
+
+  const handleSaveWorkoutLog = async () => {
+    if (!activeWorkout) return;
+
+    // Always rebuild workout log from current trackingByExercise state to ensure latest data
+    // This ensures we save the most up-to-date data even if user went back and made changes
+    const completedAt = Date.now();
+
+    const exercises: ExerciseLog[] = activeWorkout.workouts.map((workout) => {
+      const currentTracking = trackingByExercise[workout.id] || createDefaultTrackingState();
+      // Always rebuild from current tracking state to get latest data
+      return buildExerciseLog(workout, currentTracking, completedAt);
+    });
+
+    const workoutLogToSave: WorkoutLog = {
+      id: `${completedAt}-${activeWorkout.name}`,
+      workoutName: activeWorkout.name,
+      completedAt,
+      exercises,
+    };
+
+    // Debug: Log the workout log to see what we're trying to save
+    const totalRepsDebug = exercises.reduce((sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps, 0), 0);
+    console.log('[Workout] Attempting to save workout log:', {
+      workoutName: workoutLogToSave.workoutName,
+      exerciseCount: exercises.length,
+      exercises: exercises.map(ex => ({
+        name: ex.exerciseName,
+        setsCount: ex.sets.length,
+        sets: ex.sets.map(s => ({ reps: s.reps, weight: s.weight, completedAt: s.completedAt })),
+        totalReps: ex.sets.reduce((sum, set) => sum + set.reps, 0)
+      })),
+      totalReps: totalRepsDebug,
+      trackingByExercise: Object.keys(trackingByExercise).map(key => ({
+        workoutId: key,
+        mode: trackingByExercise[key]?.mode,
+        quickSets: trackingByExercise[key]?.quickSets,
+        quickReps: trackingByExercise[key]?.quickReps,
+        setsCount: trackingByExercise[key]?.sets?.length || 0,
+        sets: trackingByExercise[key]?.sets?.map(s => ({ reps: s.reps, weight: s.weight })) || []
+      }))
+    });
+
+    // CRITICAL: Validate workout log BEFORE saving to prevent phantom/invalid logs
+    // Only save if the workout has actual completed exercises with valid sets
+    if (!isValidWorkoutLog(workoutLogToSave)) {
+      // Calculate what we have for better error message
+      const totalReps = exercises.reduce((sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps, 0), 0);
+      const hasValidExercise = exercises.some(ex => 
+        ex.sets.some(set => set.reps > 0 && set.completedAt > 0)
+      );
+      
+      console.warn('[Workout] Validation failed:', {
+        hasValidExercise,
+        totalReps,
+        exerciseDetails: exercises.map(ex => ({
+          name: ex.exerciseName,
+          setsCount: ex.sets.length,
+          validSets: ex.sets.filter(s => s.reps > 0 && s.completedAt > 0).length
+        }))
+      });
+      
+      alert(`Cannot save workout: No valid exercises with completed sets found.\n\nTotal reps: ${totalReps}\nPlease complete at least one exercise with valid sets.`);
+      return;
+    }
+
     try {
-      await storage.saveWorkoutLog(workoutLog);
+      await storage.saveWorkoutLog(workoutLogToSave);
       const updatedLogs = await storage.loadWorkoutLogs();
       // Filter out invalid/phantom workout logs - only keep completed workouts with actual exercise data
       const validLogs = updatedLogs.filter(isValidWorkoutLog);
       setWorkoutLogs(validLogs);
-      setCompletedWorkoutLog(workoutLog);
+      setIsWorkoutSaved(true);
+      // Update completedWorkoutLog to reflect the saved version
+      setCompletedWorkoutLog(workoutLogToSave);
     } catch (error) {
       console.error('Error saving workout log:', error);
+      alert('Failed to save workout. Please try again.');
     }
-
-    setShowWorkoutCompletion(true);
   };
 
   const handleWorkoutCompletionDone = () => {
-    setShowWorkoutCompletion(false);
-    setActiveWorkout(null);
-    setWorkoutStartTime(null);
-    setCompletedExercises(new Set());
-    setTrackingByExercise({});
-    setExerciseLogsById({});
-    setCompletedWorkoutLog(null);
-    setAppMode('workout-mode');
+    // If workout is saved, go back to workout selection
+    // Otherwise, just hide summary to allow adjustments
+    if (isWorkoutSaved) {
+      setShowWorkoutCompletion(false);
+      setActiveWorkout(null);
+      setCompletedExercises(new Set());
+      setTrackingByExercise({});
+      setExerciseLogsById({});
+      setCompletedWorkoutLog(null);
+      setIsWorkoutSaved(false);
+      setAppMode('workout-mode');
+    } else {
+      // Just hide the summary to go back to workout carousel for adjustments
+      setShowWorkoutCompletion(false);
+    }
   };
 
   const handleClearCustomWorkout = () => {
@@ -2780,6 +3023,32 @@ const App: React.FC = () => {
     setAppMode('workout-history');
   };
 
+  const handleClearAllWorkoutLogs = async () => {
+    if (workoutLogs.length === 0) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete all ${workoutLogs.length} workout log${workoutLogs.length === 1 ? '' : 's'}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Delete all workout logs one by one
+      for (const log of workoutLogs) {
+        await storage.deleteWorkoutLog(log.id);
+      }
+      
+      // Clear the state
+      setWorkoutLogs([]);
+      setSelectedWorkoutLog(null);
+      
+      console.log('[Workout History] Cleared all workout logs');
+    } catch (error) {
+      console.error('Error clearing workout logs:', error);
+      alert('Failed to clear workout logs. Please try again.');
+    }
+  };
+
   const handleOpenCalendar = (date?: Date) => {
     setCalendarSelectedDate(date);
     setIsCalendarOpen(true);
@@ -2803,10 +3072,63 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    storage.loadWorkoutLogs().then((logs) => {
-      // Filter out invalid/phantom workout logs - only keep completed workouts with actual exercise data
+    storage.loadWorkoutLogs().then(async (logs) => {
+      console.log(`[Cleanup] Loaded ${logs.length} workout logs from storage`);
+      
+      // CRITICAL: Always validate and clean ALL logs on load
+      // This ensures users only see their actual tracked workouts
       const validLogs = logs.filter(isValidWorkoutLog);
-      setWorkoutLogs(validLogs);
+      const invalidLogs = logs.filter(log => !isValidWorkoutLog(log));
+      
+      // If there are ANY invalid logs, delete them immediately
+      if (invalidLogs.length > 0) {
+        console.log(`[Cleanup] Found ${invalidLogs.length} invalid/phantom workout logs. Removing from storage...`);
+        for (const invalidLog of invalidLogs) {
+          try {
+            await storage.deleteWorkoutLog(invalidLog.id);
+          } catch (error) {
+            console.error(`[Cleanup] Failed to delete invalid log ${invalidLog.id}:`, error);
+          }
+        }
+        console.log(`[Cleanup] Removed ${invalidLogs.length} invalid logs. ${validLogs.length} valid logs remaining.`);
+      }
+      
+      // Remove duplicates from valid logs - keep first occurrence of each unique workout
+      const seenIds = new Set<string>();
+      const seenKeys = new Set<string>();
+      const deduplicatedValidLogs: WorkoutLog[] = [];
+      const duplicateLogsToDelete: WorkoutLog[] = [];
+      
+      for (const log of validLogs) {
+        const key = `${log.completedAt}-${log.workoutName}`;
+        if (!seenIds.has(log.id) && !seenKeys.has(key)) {
+          seenIds.add(log.id);
+          seenKeys.add(key);
+          deduplicatedValidLogs.push(log);
+        } else {
+          // This is a duplicate - mark for deletion
+          duplicateLogsToDelete.push(log);
+        }
+      }
+      
+      // Delete duplicate logs
+      if (duplicateLogsToDelete.length > 0) {
+        console.log(`[Cleanup] Found ${duplicateLogsToDelete.length} duplicate logs. Removing duplicates...`);
+        let deletedCount = 0;
+        for (const duplicate of duplicateLogsToDelete) {
+          try {
+            await storage.deleteWorkoutLog(duplicate.id);
+            deletedCount++;
+          } catch (error) {
+            console.error(`[Cleanup] Failed to delete duplicate log ${duplicate.id}:`, error);
+          }
+        }
+        console.log(`[Cleanup] Removed ${deletedCount} duplicate logs.`);
+      }
+      
+      // Final count - this is what users will see
+      console.log(`[Cleanup] Complete. ${deduplicatedValidLogs.length} valid, unique workout logs remaining.`);
+      setWorkoutLogs(deduplicatedValidLogs);
     }).catch((error) => {
       console.error('Error loading workout logs:', error);
       setWorkoutLogs([]);
@@ -2903,26 +3225,29 @@ const App: React.FC = () => {
   if (appMode === 'workout-active' && activeWorkout) {
     return (
       <>
-        <WorkoutCarousel
-          workoutName={activeWorkout.name}
-          workouts={activeWorkout.workouts}
-          completedExercises={completedExercises}
-          trackingByExercise={trackingByExercise}
-          onUpdateQuick={handleUpdateQuick}
-          onToggleMode={handleToggleMode}
-          onAddSet={handleAddSet}
-          onUpdateSet={handleUpdateSet}
-          onRemoveSet={handleRemoveSet}
-          onMarkComplete={handleCompleteExercise}
-          onBack={handleBackFromWorkoutActive}
-          onWorkoutComplete={handleWorkoutComplete}
-          getCategoryStyles={getCategoryStyles}
-          isMobile={isMobile}
-        />
+        {!showWorkoutCompletion && (
+          <WorkoutCarousel
+            workoutName={activeWorkout.name}
+            workouts={activeWorkout.workouts}
+            completedExercises={completedExercises}
+            trackingByExercise={trackingByExercise}
+            onUpdateQuick={handleUpdateQuick}
+            onToggleMode={handleToggleMode}
+            onAddSet={handleAddSet}
+            onUpdateSet={handleUpdateSet}
+            onRemoveSet={handleRemoveSet}
+            onMarkComplete={handleCompleteExercise}
+            onBack={handleBackFromWorkoutActive}
+            getCategoryStyles={getCategoryStyles}
+            isMobile={isMobile}
+          />
+        )}
         {showWorkoutCompletion && completedWorkoutLog && (
           <WorkoutCompletionCelebration
             workoutLog={completedWorkoutLog}
+            onSave={handleSaveWorkoutLog}
             onDone={handleWorkoutCompletionDone}
+            isSaved={isWorkoutSaved}
           />
         )}
       </>
@@ -2952,47 +3277,67 @@ const App: React.FC = () => {
                     Showing {historyPeriod === 'day' ? 'daily' : historyPeriod === 'week' ? 'weekly' : 'monthly'} trends
                   </p>
                 </div>
-                <button
-                  onClick={() => handleOpenCalendar()}
-                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs uppercase tracking-wider rounded-xl"
-                >
-                  Open Calendar
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleOpenCalendar()}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs uppercase tracking-wider rounded-xl"
+                  >
+                    Open Calendar
+                  </button>
+                  <button
+                    onClick={handleClearAllWorkoutLogs}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                  >
+                    Clear Data
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 <TimeSeriesChart
-                  title="Duration"
-                  yAxisLabel="Minutes"
-                  colorClassName="from-emerald-500 to-cyan-500"
-                  data={historyDurationData}
+                  title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
+                  yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
+                  colorClassName={
+                    selectedHistoryMetric === 'volume'
+                      ? 'from-purple-500 to-blue-500'
+                      : 'from-pink-500 to-orange-500'
+                  }
+                  metric={selectedHistoryMetric}
+                  data={
+                    selectedHistoryMetric === 'volume'
+                      ? historyVolumeData
+                      : historyRepsData
+                  }
                   onDoubleClick={() => handleOpenCalendar()}
                   onPointSelect={(date) => handleOpenCalendar(date)}
+                  width={640}
+                  height={280}
+                  period={historyPeriod}
                 />
-                <TimeSeriesChart
-                  title="Volume"
-                  yAxisLabel="Total volume"
-                  colorClassName="from-purple-500 to-blue-500"
-                  data={historyVolumeData}
-                  onDoubleClick={() => handleOpenCalendar()}
-                  onPointSelect={(date) => handleOpenCalendar(date)}
-                />
-                <TimeSeriesChart
-                  title="Reps"
-                  yAxisLabel="Total reps"
-                  colorClassName="from-pink-500 to-orange-500"
-                  data={historyRepsData}
-                  onDoubleClick={() => handleOpenCalendar()}
-                  onPointSelect={(date) => handleOpenCalendar(date)}
-                />
+                
+                <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
+                  <button
+                    onClick={() => setSelectedHistoryMetric('volume')}
+                    className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                      selectedHistoryMetric === 'volume'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30'
+                        : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                    }`}
+                  >
+                    Volume
+                  </button>
+                  <button
+                    onClick={() => setSelectedHistoryMetric('reps')}
+                    className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                      selectedHistoryMetric === 'reps'
+                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg shadow-pink-500/30'
+                        : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                    }`}
+                  >
+                    Reps
+                  </button>
+                </div>
               </div>
-
-              <PersonalBests pbs={historyPbs} />
-
-              <ActivityFeed
-                workoutLogs={workoutLogs}
-                onSelectLog={(log) => setSelectedWorkoutLog(log)}
-              />
             </>
           )}
         </main>

@@ -5,19 +5,9 @@ type Period = 'day' | 'week' | 'month';
 export type AggregatedMetrics = {
   dateKey: string;
   date: Date;
-  totalDurationSeconds: number;
   totalVolume: number;
   totalReps: number;
   workoutCount: number;
-};
-
-export type ExercisePB = {
-  exerciseId: string;
-  exerciseName: string;
-  maxWeight?: { value: number; date: Date; workoutId: string };
-  maxReps?: { value: number; date: Date; workoutId: string };
-  maxVolume?: { value: number; date: Date; workoutId: string };
-  maxTotalVolume?: { value: number; date: Date; workoutId: string };
 };
 
 const startOfDayKey = (timestamp: number): string => {
@@ -69,12 +59,10 @@ export const aggregateLogsByPeriod = (logs: WorkoutLog[], period: Period): Aggre
   logs.forEach((log) => {
     const key = getPeriodKey(log.completedAt, period);
     const existing = map.get(key);
-    const duration = log.durationSeconds ?? 0;
     const volume = calculateLogVolume(log);
     const reps = calculateLogReps(log);
 
     if (existing) {
-      existing.totalDurationSeconds += duration;
       existing.totalVolume += volume;
       existing.totalReps += reps;
       existing.workoutCount += 1;
@@ -82,7 +70,6 @@ export const aggregateLogsByPeriod = (logs: WorkoutLog[], period: Period): Aggre
       map.set(key, {
         dateKey: key,
         date: parseDateKey(key),
-        totalDurationSeconds: duration,
         totalVolume: volume,
         totalReps: reps,
         workoutCount: 1,
@@ -105,55 +92,13 @@ export const pickSmartPeriod = (logs: WorkoutLog[]): Period => {
 
 export const formatChartData = (
   aggregated: AggregatedMetrics[],
-  metric: 'duration' | 'volume' | 'reps'
+  metric: 'volume' | 'reps'
 ): Array<{ date: Date; value: number }> => {
   return aggregated.map((item) => ({
     date: item.date,
     value:
-      metric === 'duration'
-        ? item.totalDurationSeconds
-        : metric === 'volume'
+      metric === 'volume'
         ? item.totalVolume
         : item.totalReps,
   }));
-};
-
-export const calculateExercisePBs = (logs: WorkoutLog[]): ExercisePB[] => {
-  const pbMap = new Map<string, ExercisePB>();
-
-  logs.forEach((log) => {
-    log.exercises.forEach((exercise) => {
-      const key = exercise.exerciseId;
-      const existing = pbMap.get(key) || {
-        exerciseId: exercise.exerciseId,
-        exerciseName: exercise.exerciseName,
-      };
-
-      let totalVolume = 0;
-
-      exercise.sets.forEach((set) => {
-        const weight = set.weight ?? 0;
-        const volume = weight * set.reps;
-        totalVolume += volume;
-
-        if (!existing.maxWeight || weight > existing.maxWeight.value) {
-          existing.maxWeight = { value: weight, date: new Date(log.completedAt), workoutId: log.id };
-        }
-        if (!existing.maxReps || set.reps > existing.maxReps.value) {
-          existing.maxReps = { value: set.reps, date: new Date(log.completedAt), workoutId: log.id };
-        }
-        if (!existing.maxVolume || volume > existing.maxVolume.value) {
-          existing.maxVolume = { value: volume, date: new Date(log.completedAt), workoutId: log.id };
-        }
-      });
-
-      if (!existing.maxTotalVolume || totalVolume > existing.maxTotalVolume.value) {
-        existing.maxTotalVolume = { value: totalVolume, date: new Date(log.completedAt), workoutId: log.id };
-      }
-
-      pbMap.set(key, existing);
-    });
-  });
-
-  return Array.from(pbMap.values()).sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
 };
