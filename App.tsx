@@ -115,6 +115,22 @@ const calculateLogVolume = (log: WorkoutLog): number => {
   }, 0);
 };
 
+const calculateTotalSets = (log: WorkoutLog): number => {
+  return log.exercises.reduce((total, exercise) => {
+    return total + exercise.sets.length;
+  }, 0);
+};
+
+const calculateTotalReps = (log: WorkoutLog): number => {
+  return log.exercises.reduce((total, exercise) => {
+    const exerciseReps = exercise.sets.reduce((sum, set) => {
+      return sum + set.reps;
+    }, 0);
+    return total + exerciseReps;
+  }, 0);
+};
+
+
 // Mobile detection hook
 const useIsMobile = (): boolean => {
   const [isMobile, setIsMobile] = useState(false);
@@ -1298,26 +1314,35 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
 
 // Workout Completion Celebration Component
 interface WorkoutCompletionCelebrationProps {
-  workoutName: string;
-  exerciseCount: number;
+  workoutLog: WorkoutLog;
   onDone: () => void;
 }
 
 const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> = ({
-  workoutName,
-  exerciseCount,
+  workoutLog,
   onDone,
 }) => {
   const [showContent, setShowContent] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const totalVolume = calculateLogVolume(workoutLog);
+  const totalSets = calculateTotalSets(workoutLog);
+  const totalReps = calculateTotalReps(workoutLog);
 
   useEffect(() => {
     const t1 = setTimeout(() => setShowContent(true), 200);
-    return () => clearTimeout(t1);
+    const t2 = setTimeout(() => setShowMetrics(true), 800);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className="flex flex-col items-center px-6 max-w-md text-center">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm overflow-y-auto p-4">
+      <div className="flex flex-col items-center px-6 max-w-2xl w-full text-center">
+        {/* Checkmark Animation */}
         <div
           className={`w-28 h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/30 transition-all duration-500 ${
             showContent ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
@@ -1328,15 +1353,94 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         </div>
+
+        {/* Title */}
         <h2 className={`text-2xl md:text-3xl font-bold mt-8 mb-2 transition-all duration-500 delay-200 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           Workout Complete!
         </h2>
-        <p className={`text-gray-400 mb-6 transition-all duration-500 delay-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
-          You finished <strong className="text-white">{workoutName}</strong> — {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'} completed.
+        <p className={`text-gray-400 mb-8 transition-all duration-500 delay-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+          You finished <strong className="text-white">{workoutLog.workoutName}</strong>
         </p>
+
+        {/* Metrics Grid */}
+        <div className={`w-full grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 transition-all duration-500 delay-400 ${showMetrics ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Total Volume - Larger card */}
+          <div className="col-span-2 md:col-span-2 bg-[#0d0d0d] border border-gray-800 rounded-2xl p-4 md:p-6 hover:border-green-500/50 transition-all">
+            <div className="text-gray-400 text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Total Volume</div>
+            <div className="text-3xl md:text-4xl font-bold text-white">{Math.round(totalVolume)}</div>
+            <div className="text-gray-500 text-xs md:text-sm mt-1">lbs</div>
+          </div>
+
+          {/* Total Sets */}
+          <div className="bg-[#0d0d0d] border border-gray-800 rounded-2xl p-4 md:p-6 hover:border-green-500/50 transition-all">
+            <div className="text-gray-400 text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Sets</div>
+            <div className="text-2xl md:text-3xl font-bold text-white">{totalSets}</div>
+          </div>
+
+          {/* Total Reps */}
+          <div className="bg-[#0d0d0d] border border-gray-800 rounded-2xl p-4 md:p-6 hover:border-green-500/50 transition-all">
+            <div className="text-gray-400 text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Reps</div>
+            <div className="text-2xl md:text-3xl font-bold text-white">{totalReps}</div>
+          </div>
+        </div>
+
+        {/* Exercise Breakdown - Expandable */}
+        <div className={`w-full mb-6 transition-all duration-500 delay-500 ${showMetrics ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="w-full bg-[#0d0d0d] border border-gray-800 rounded-2xl p-4 hover:border-gray-700 transition-all flex items-center justify-between"
+          >
+            <span className="text-gray-400 text-sm font-bold uppercase tracking-wider">Exercise Breakdown</span>
+            <svg
+              className={`w-5 h-5 text-gray-400 transition-transform ${showBreakdown ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showBreakdown && (
+            <div className="mt-3 space-y-3">
+              {workoutLog.exercises.map((exercise) => {
+                const exerciseVolume = exercise.sets.reduce((sum, set) => {
+                  const weight = set.weight ?? 0;
+                  return sum + weight * set.reps;
+                }, 0);
+                const exerciseSets = exercise.sets.length;
+                const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0);
+                return (
+                  <div key={exercise.exerciseId} className="bg-[#111111] border border-gray-800 rounded-xl p-4 text-left">
+                    <h4 className="text-white font-bold mb-2">{exercise.exerciseName}</h4>
+                    <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                      <span>{exerciseSets} {exerciseSets === 1 ? 'set' : 'sets'}</span>
+                      <span>{exerciseReps} reps</span>
+                      {exerciseVolume > 0 && <span>{Math.round(exerciseVolume)} lbs volume</span>}
+                    </div>
+                    {exercise.sets.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-800 space-y-1">
+                        {exercise.sets.map((set) => (
+                          <div key={set.setNumber} className="flex justify-between text-xs text-gray-500">
+                            <span>Set {set.setNumber}</span>
+                            <span>
+                              {set.weight !== undefined ? `${set.weight} lbs × ` : ''}
+                              {set.reps} reps
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Done Button */}
         <button
           onClick={onDone}
-          className={`px-8 py-4 bg-white text-black rounded-2xl font-bold transition-all duration-500 delay-400 hover:bg-gray-100 active:scale-95 ${showContent ? 'opacity-100' : 'opacity-0'}`}
+          className={`px-8 py-4 bg-white text-black rounded-2xl font-bold transition-all duration-500 delay-600 hover:bg-gray-100 active:scale-95 ${showContent ? 'opacity-100' : 'opacity-0'}`}
         >
           Back to Workout Selection
         </button>
@@ -1374,9 +1478,6 @@ const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onCl
             <div className="flex flex-wrap gap-4 text-xs text-gray-500 mt-3">
               <span>{log.exercises.length} exercises</span>
               <span>{Math.round(totalVolume)} total volume</span>
-              {log.durationSeconds !== undefined && (
-                <span>{Math.round(log.durationSeconds / 60)} min duration</span>
-              )}
             </div>
           </div>
           <div className="space-y-4">
@@ -1694,11 +1795,11 @@ const App: React.FC = () => {
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [trackingByExercise, setTrackingByExercise] = useState<Record<string, ExerciseTrackingState>>({});
   const [exerciseLogsById, setExerciseLogsById] = useState<Record<string, ExerciseLog>>({});
-  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [showWorkoutCompletion, setShowWorkoutCompletion] = useState(false);
   const [wasDrawerOpenBeforeModal, setWasDrawerOpenBeforeModal] = useState(false);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [completedWorkoutLog, setCompletedWorkoutLog] = useState<WorkoutLog | null>(null);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1831,8 +1932,8 @@ const App: React.FC = () => {
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
-    setWorkoutStartTime(null);
     setShowWorkoutCompletion(false);
+    setCompletedWorkoutLog(null);
     setWasDrawerOpenBeforeModal(false);
     setSelectedWorkoutLog(null);
     closeDrawer();
@@ -1848,7 +1949,6 @@ const App: React.FC = () => {
     });
     setTrackingByExercise(trackingState);
     setExerciseLogsById({});
-    setWorkoutStartTime(Date.now());
     setShowWorkoutCompletion(false);
     setAppMode('workout-active');
   };
@@ -1997,7 +2097,8 @@ const App: React.FC = () => {
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
-    setWorkoutStartTime(null);
+    setCompletedWorkoutLog(null);
+    setShowWorkoutCompletion(false);
   };
 
   const handleWorkoutComplete = async () => {
@@ -2007,10 +2108,6 @@ const App: React.FC = () => {
     }
 
     const completedAt = Date.now();
-    const durationSeconds =
-      workoutStartTime && completedAt > workoutStartTime
-        ? Math.floor((completedAt - workoutStartTime) / 1000)
-        : undefined;
 
     const exercises: ExerciseLog[] = activeWorkout.workouts.map((workout) => {
       return (
@@ -2023,7 +2120,6 @@ const App: React.FC = () => {
       id: `${completedAt}-${activeWorkout.name}`,
       workoutName: activeWorkout.name,
       completedAt,
-      durationSeconds,
       exercises,
     };
 
@@ -2031,6 +2127,7 @@ const App: React.FC = () => {
       await storage.saveWorkoutLog(workoutLog);
       const updatedLogs = await storage.loadWorkoutLogs();
       setWorkoutLogs(updatedLogs);
+      setCompletedWorkoutLog(workoutLog);
     } catch (error) {
       console.error('Error saving workout log:', error);
     }
@@ -2044,7 +2141,7 @@ const App: React.FC = () => {
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
-    setWorkoutStartTime(null);
+    setCompletedWorkoutLog(null);
     setAppMode('workout-mode');
   };
 
@@ -2347,10 +2444,9 @@ const App: React.FC = () => {
           getCategoryStyles={getCategoryStyles}
           isMobile={isMobile}
         />
-        {showWorkoutCompletion && (
+        {showWorkoutCompletion && completedWorkoutLog && (
           <WorkoutCompletionCelebration
-            workoutName={activeWorkout.name}
-            exerciseCount={activeWorkout.workouts.length}
+            workoutLog={completedWorkoutLog}
             onDone={handleWorkoutCompletionDone}
           />
         )}
