@@ -819,7 +819,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   const [isGifExpanded, setIsGifExpanded] = useState(false);
 
   return (
-    <div className="w-full flex-shrink-0 flex items-center justify-center p-2 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
+    <div className="w-full flex-shrink-0 flex items-center justify-center p-4 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
       <div
         className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col h-full max-h-full ${
           isJustCompleted && isCurrentCard ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
