@@ -327,16 +327,18 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <p className="text-[12px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
         </div>
         {data.length > 0 && (
-          <div className="text-right min-w-[72px]">
-            <div className="text-sm font-bold text-emerald-400 tabular-nums">
-              {hoverIndex !== null && data[hoverIndex]
-                ? formatTooltipValue(data[hoverIndex].value)
-                : '—'}
+          <div className="text-right flex flex-col items-end">
+            <div className="flex items-baseline gap-1.5">
+              <div className="text-2xl font-black text-emerald-400 tabular-nums leading-none tracking-tight">
+                {hoverIndex !== null && data[hoverIndex]
+                  ? `${formatTooltipValue(data[hoverIndex].value)} ${metric === 'volume' ? 'lbs' : 'reps'}`
+                  : '--'}
+              </div>
             </div>
-            <div className="text-[12px] text-gray-500">
+            <div className="text-[11px] font-bold text-gray-400 mt-0.5 bg-gray-800/50 px-2 py-0.5 rounded-full border border-gray-700/50">
               {hoverIndex !== null && data[hoverIndex]
-                ? data[hoverIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'Hover or tap bar'}
+                ? data[hoverIndex].date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                : 'Select a bar'}
             </div>
           </div>
         )}
@@ -405,7 +407,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                   x={paddingLeft - 10}
                   y={tick.y + 4}
                   textAnchor="end"
-                  fill="#9ca3af"
+                  fill="#d1d5db"
                   fontSize={isMobile ? "15" : "12"}
                   className="font-medium"
                 >
@@ -427,18 +429,34 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
               
               return (
                 <g key={`bar-${point.date.toISOString()}-${index}`}>
+                  {/* Invisible hit area for easier interaction */}
+                  {point.value > 0 && (
+                    <rect
+                      x={x - (barSpacing - barWidth) / 2}
+                      y={paddingTop}
+                      width={barSpacing}
+                      height={chartHeight}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoverIndex(index)}
+                      onMouseLeave={() => setHoverIndex(null)}
+                    />
+                  )}
+                  
+                  {/* Highlight background for hovered bar - REMOVED */}
+
                   <rect
                     x={x}
                     y={y}
                     width={barWidth}
                     height={barHeight}
                     fill={gradientColors.from}
-                    rx="2"
-                    className="transition-all duration-150 cursor-pointer"
-                    style={{ opacity: isHovered ? 1 : 0.8 }}
-                    onMouseEnter={() => setHoverIndex(index)}
+                    fillOpacity={isHovered ? 0.7 : 1}
+                    rx="3"
+                    className="transition-all duration-200 cursor-pointer"
+                    onMouseEnter={() => point.value > 0 && setHoverIndex(index)}
                     onMouseLeave={() => setHoverIndex(null)}
-                    onClick={() => setHoverIndex(index)}
+                    onClick={() => point.value > 0 && setHoverIndex(index)}
                   />
                   
                   {/* X-axis label */}
@@ -447,7 +465,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                       x={x + barWidth / 2}
                       y={paddingTop + chartHeight + (isMobile ? 25 : 20)}
                       textAnchor="middle"
-                      fill="#9ca3af"
+                      fill="#d1d5db"
                       fontSize={isMobile ? "15" : "12"}
                       className="font-medium"
                     >
@@ -669,10 +687,10 @@ const isValidWorkoutLog = (log: WorkoutLog): boolean => {
   }
   
   // Require at least one valid exercise AND meaningful workout data
-  // Require at least 10 reps minimum to filter out accidental/incomplete entries
-  const hasMinimumReps = totalReps >= 10;
+  // Require at least 1 rep minimum to filter out accidental/incomplete entries
+  const hasMinimumReps = totalReps >= 1;
   
-  // Must have valid exercise AND at least 10 reps
+  // Must have valid exercise AND at least 1 rep
   return hasValidExercise && hasMinimumReps;
 };
 
@@ -1905,6 +1923,7 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
   const [showContent, setShowContent] = useState(false);
   const [showMetrics, setShowMetrics] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showPig, setShowPig] = useState(false);
 
   const totalVolume = calculateLogVolume(workoutLog);
   const totalSets = calculateTotalSets(workoutLog);
@@ -1919,8 +1938,45 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
     };
   }, []);
 
+  useEffect(() => {
+    if (isSaved) {
+      setShowPig(true);
+      const timer = setTimeout(() => {
+        setShowPig(false);
+        onDone(); // Navigate back after animation completes
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSaved, onDone]);
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm overflow-y-auto p-4">
+      {/* Celebrating Pig Animation Overlay */}
+      {showPig && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md pointer-events-auto">
+          <div className="relative scale-125 md:scale-150 flex flex-col items-center">
+            <div className="text-[120px] md:text-[180px] animate-bounce filter drop-shadow-[0_0_50px_rgba(255,105,180,1)] select-none">
+              <span className="inline-block animate-[wiggle_1s_ease-in-out_infinite]">🐷</span>
+            </div>
+            
+            <div className="mt-8 text-center">
+              <div className="text-pink-400 font-black text-5xl md:text-7xl italic tracking-tighter animate-pulse uppercase drop-shadow-[0_0_20px_rgba(255,105,180,0.5)]">
+                OINK-TASTIC!
+              </div>
+              <div className="text-white/60 text-xl md:text-2xl font-bold mt-4 animate-bounce delay-100">
+                (•◡•)
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes wiggle {
+              0%, 100% { transform: rotate(-5deg) scale(1); }
+              50% { transform: rotate(5deg) scale(1.1); }
+            }
+          `}</style>
+        </div>
+      )}
+
       <div className="flex flex-col items-center px-6 max-w-2xl w-full text-center">
         {/* Checkmark Animation */}
         <div
@@ -2480,38 +2536,6 @@ const App: React.FC = () => {
   const historyVolumeData = useMemo(() => formatChartData(historyAggregated, 'volume'), [historyAggregated]);
   const historyRepsData = useMemo(() => formatChartData(historyAggregated, 'reps'), [historyAggregated]);
 
-  const generateFakeData = async () => {
-    const fakeLogs: WorkoutLog[] = [];
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
-    
-    for (let i = 0; i < 7; i++) {
-      const completedAt = now - i * dayMs;
-      const log: WorkoutLog = {
-        id: `fake-${i}-${Date.now()}`,
-        workoutName: i % 2 === 0 ? 'Chest + Arms' : 'Legs',
-        completedAt,
-        durationSeconds: 3600 + Math.random() * 1800,
-        exercises: [
-          {
-            exerciseId: 'ca-1',
-            exerciseName: 'DB Incline Press',
-            sets: [
-              { setNumber: 1, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
-              { setNumber: 2, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
-              { setNumber: 3, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
-            ]
-          }
-        ]
-      };
-      fakeLogs.push(log);
-      await storage.saveWorkoutLog(log);
-    }
-    
-    const allLogs = await storage.loadWorkoutLogs();
-    setWorkoutLogs(allLogs.filter(isValidWorkoutLog));
-  };
-
   // Get tile IDs for prominent tile detection
   const tileIds = useMemo(() => {
     if (appMode === 'view-saved' && viewingWorkoutId) {
@@ -2973,21 +2997,16 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutCompletionDone = () => {
-    // If workout is saved, go back to workout selection
-    // Otherwise, just hide summary to allow adjustments
-    if (isWorkoutSaved) {
-      setShowWorkoutCompletion(false);
-      setActiveWorkout(null);
-      setCompletedExercises(new Set());
-      setTrackingByExercise({});
-      setExerciseLogsById({});
-      setCompletedWorkoutLog(null);
-      setIsWorkoutSaved(false);
-      setAppMode('workout-mode');
-    } else {
-      // Just hide the summary to go back to workout carousel for adjustments
-      setShowWorkoutCompletion(false);
-    }
+    // Navigate all the way back to main landing page with 4 tiles
+    setShowWorkoutCompletion(false);
+    setActiveWorkout(null);
+    setCompletedExercises(new Set());
+    setTrackingByExercise({});
+    setExerciseLogsById({});
+    setCompletedWorkoutLog(null);
+    setIsWorkoutSaved(false);
+    setAppMode('landing');
+    closeDrawer();
   };
 
   const handleClearCustomWorkout = () => {
@@ -3408,12 +3427,6 @@ const App: React.FC = () => {
               </svg>
               <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
               <p className="text-gray-500 text-sm mb-6">Complete a workout to start tracking your progress.</p>
-              <button
-                onClick={generateFakeData}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-              >
-                Generate Fake Data
-              </button>
             </div>
           ) : (
             <>
@@ -3421,7 +3434,7 @@ const App: React.FC = () => {
                 <div>
                   <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
                   <p className="text-sm text-gray-500">
-                    Showing {historyPeriod === 'day' ? 'daily' : historyPeriod === 'week' ? 'weekly' : 'monthly'} trends
+                    {historyPeriod === 'day' ? 'Last 7 days' : historyPeriod === 'week' ? 'Weekly trends' : 'Monthly trends'}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -3441,14 +3454,6 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-end">
-                  <button
-                    onClick={generateFakeData}
-                    className="text-[10px] text-emerald-500 hover:text-emerald-400 uppercase tracking-widest font-bold"
-                  >
-                    Generate Fake Data
-                  </button>
-                </div>
                 <TimeSeriesChart
                   title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
                   yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
