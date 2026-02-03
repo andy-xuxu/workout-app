@@ -1504,7 +1504,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   isMobile,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set());
@@ -1560,34 +1560,34 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   }, [goPrev, goNext]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Check if touch started within a scrollable element (like the track sets panel)
-    const target = e.target as HTMLElement;
-    const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
-    
-    // If touch started in a scrollable element, don't handle swipe
-    if (scrollableElement) {
-      return;
-    }
-    
-    setTouchStart(e.touches[0].clientX);
+    setTouchStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    });
     setTouchDelta(0);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart === null) return;
     
-    // Check if we're moving within a scrollable element
+    const deltaX = e.touches[0].clientX - touchStart.x;
+    const deltaY = Math.abs(e.touches[0].clientY - touchStart.y);
+    
+    // Check if we're moving within a scrollable element (like the track sets panel)
     const target = e.target as HTMLElement;
     const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
     
-    // If moving within scrollable element, don't handle swipe
-    if (scrollableElement) {
+    // If moving within a scrollable element and movement is primarily vertical (scrolling), don't handle swipe
+    // This prevents card movement when scrolling vertically, but allows horizontal swipes
+    if (scrollableElement && deltaY > Math.abs(deltaX)) {
+      // Vertical scrolling detected - cancel swipe gesture
       setTouchStart(null);
       setTouchDelta(0);
       return;
     }
     
-    setTouchDelta(e.touches[0].clientX - touchStart);
+    // Allow horizontal swipes (for card navigation)
+    setTouchDelta(deltaX);
   };
 
   const handleTouchEnd = () => {
