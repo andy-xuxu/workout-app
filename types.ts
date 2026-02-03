@@ -23,6 +23,7 @@ export interface WorkoutLog {
   workoutId?: string;
   workoutName: string;
   completedAt: number;
+  durationSeconds?: number;
   exercises: ExerciseLog[];
   notes?: string;
 }

@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout, WorkoutLog, ExerciseLog, SetLog } from './types';
 import { storage } from './utils/storage';
-import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod } from './utils/analytics';
+import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod, AggregatedMetrics } from './utils/analytics';
 
 type AppMode =
   | 'landing'
@@ -320,7 +320,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       className="bg-[#111111] border border-gray-800 rounded-2xl p-4 md:p-5 shadow-xl"
       onDoubleClick={onDoubleClick}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-sm font-bold text-white">{title}</h3>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
@@ -340,6 +340,20 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                 <stop offset="100%" stopColor={gradientColors.to} />
               </linearGradient>
             </defs>
+            
+            {/* Horizontal Gridlines */}
+            {yAxisLabels.map((tick, i) => (
+              <line
+                key={`grid-${i}`}
+                x1={paddingLeft}
+                y1={tick.y}
+                x2={paddingLeft + chartWidth}
+                y2={tick.y}
+                stroke="#1f2937"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+            ))}
             
             {/* Y-axis line */}
             <line
@@ -377,7 +391,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                   y={tick.y + 4}
                   textAnchor="end"
                   fill="#9ca3af"
-                  fontSize="10"
+                  fontSize="12"
                   className="font-medium"
                 >
                   {formatYAxisValue(tick.value)}
@@ -403,7 +417,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                     y={y}
                     width={barWidth}
                     height={barHeight}
-                    fill={`url(#${gradientId})`}
+                    fill={gradientColors.from}
                     rx="2"
                     className="transition-all duration-150 cursor-pointer"
                     style={{ opacity: isHovered ? 1 : 0.8 }}
@@ -419,7 +433,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                       y={paddingTop + chartHeight + 20}
                       textAnchor="middle"
                       fill="#9ca3af"
-                      fontSize="9"
+                      fontSize="11"
                       className="font-medium"
                     >
                       {formatDate(point.date)}
@@ -432,11 +446,22 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           
           {/* Tooltip */}
           {hoverIndex !== null && data[hoverIndex] && (
-            <div className="absolute right-3 top-2 bg-black/80 text-white text-[10px] px-2 py-1 rounded-lg border border-gray-700">
-              <div className="font-semibold">{formatTooltipValue(data[hoverIndex].value)}</div>
-              <div className="text-gray-400">
-                {data[hoverIndex].date.toLocaleDateString()}
+            <div 
+              className="absolute pointer-events-none bg-black/90 text-white text-[10px] px-2 py-1.5 rounded-lg border border-gray-700 shadow-2xl z-20 flex flex-col items-center min-w-[60px] transition-all duration-200"
+              style={{
+                left: `${paddingLeft + hoverIndex * barSpacing + barSpacing / 2}%`,
+                transform: 'translateX(-50%)',
+                bottom: `${((data[hoverIndex].value / actualRange) * chartHeight) + paddingBottom + 8}px`,
+                // Use actual pixel calculation for left since SVG is responsive
+                left: `${(paddingLeft + hoverIndex * barSpacing + barSpacing / 2) * (100 / width)}%`
+              }}
+            >
+              <div className="font-bold text-emerald-400">{formatTooltipValue(data[hoverIndex].value)}</div>
+              <div className="text-[8px] text-gray-400 whitespace-nowrap">
+                {data[hoverIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </div>
+              {/* Tooltip Arrow */}
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-black border-r border-b border-gray-700 rotate-45" />
             </div>
           )}
         </div>
@@ -2429,11 +2454,69 @@ const App: React.FC = () => {
 
   const historyPeriod = useMemo(() => pickSmartPeriod(workoutLogs), [workoutLogs]);
   const historyAggregated = useMemo(
-    () => aggregateLogsByPeriod(workoutLogs, historyPeriod),
+    () => {
+      const aggregated = aggregateLogsByPeriod(workoutLogs, historyPeriod);
+      // If period is 'day', always show last 10 days
+      if (historyPeriod === 'day') {
+        const now = new Date();
+        const last10Days: AggregatedMetrics[] = [];
+        for (let i = 9; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+          const dateKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+          const existing = aggregated.find(a => a.dateKey === dateKey);
+          if (existing) {
+            last10Days.push(existing);
+          } else {
+            last10Days.push({
+              dateKey,
+              date: d,
+              totalDurationSeconds: 0,
+              totalVolume: 0,
+              totalReps: 0,
+              workoutCount: 0,
+            });
+          }
+        }
+        return last10Days;
+      }
+      return aggregated;
+    },
     [workoutLogs, historyPeriod]
   );
   const historyVolumeData = useMemo(() => formatChartData(historyAggregated, 'volume'), [historyAggregated]);
   const historyRepsData = useMemo(() => formatChartData(historyAggregated, 'reps'), [historyAggregated]);
+
+  const generateFakeData = async () => {
+    const fakeLogs: WorkoutLog[] = [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    
+    for (let i = 0; i < 10; i++) {
+      const completedAt = now - i * dayMs;
+      const log: WorkoutLog = {
+        id: `fake-${i}-${Date.now()}`,
+        workoutName: i % 2 === 0 ? 'Chest + Arms' : 'Legs',
+        completedAt,
+        durationSeconds: 3600 + Math.random() * 1800,
+        exercises: [
+          {
+            exerciseId: 'ca-1',
+            exerciseName: 'DB Incline Press',
+            sets: [
+              { setNumber: 1, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
+              { setNumber: 2, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
+              { setNumber: 3, reps: 10 + Math.floor(Math.random() * 5), weight: 40 + Math.floor(Math.random() * 20), completedAt },
+            ]
+          }
+        ]
+      };
+      fakeLogs.push(log);
+      await storage.saveWorkoutLog(log);
+    }
+    
+    const allLogs = await storage.loadWorkoutLogs();
+    setWorkoutLogs(allLogs.filter(isValidWorkoutLog));
+  };
 
   // Get tile IDs for prominent tile detection
   const tileIds = useMemo(() => {
@@ -3266,7 +3349,13 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
               </svg>
               <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
-              <p className="text-gray-500 text-sm">Complete a workout to start tracking your progress.</p>
+              <p className="text-gray-500 text-sm mb-6">Complete a workout to start tracking your progress.</p>
+              <button
+                onClick={generateFakeData}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+              >
+                Generate Fake Data
+              </button>
             </div>
           ) : (
             <>
@@ -3294,14 +3383,18 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    onClick={generateFakeData}
+                    className="text-[10px] text-emerald-500 hover:text-emerald-400 uppercase tracking-widest font-bold"
+                  >
+                    Generate Fake Data
+                  </button>
+                </div>
                 <TimeSeriesChart
                   title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
                   yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
-                  colorClassName={
-                    selectedHistoryMetric === 'volume'
-                      ? 'from-purple-500 to-blue-500'
-                      : 'from-pink-500 to-orange-500'
-                  }
+                  colorClassName="from-emerald-500 to-emerald-400"
                   metric={selectedHistoryMetric}
                   data={
                     selectedHistoryMetric === 'volume'
@@ -3320,7 +3413,7 @@ const App: React.FC = () => {
                     onClick={() => setSelectedHistoryMetric('volume')}
                     className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
                       selectedHistoryMetric === 'volume'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30'
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
                         : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
                     }`}
                   >
@@ -3330,7 +3423,7 @@ const App: React.FC = () => {
                     onClick={() => setSelectedHistoryMetric('reps')}
                     className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
                       selectedHistoryMetric === 'reps'
-                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg shadow-pink-500/30'
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
                         : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
                     }`}
                   >

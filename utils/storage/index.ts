@@ -60,9 +60,11 @@ async function createStorageAdapter(): Promise<StorageAdapter> {
               }
             }
             
+            const hasDuration = log.durationSeconds && log.durationSeconds > 0;
+            const hasEnoughReps = totalReps >= 20;
             const hasMinimumReps = totalReps >= 10;
             
-            return hasValidExercise && hasMinimumReps;
+            return hasValidExercise && hasMinimumReps && (hasDuration || hasEnoughReps);
           };
           
           const invalidLogs = existingLogs.filter(log => !isValidLog(log));

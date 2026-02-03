@@ -64,9 +64,12 @@ function isValidWorkoutLogForMigration(log: unknown): log is WorkoutLog {
   }
   
   // Require at least one valid exercise AND meaningful total reps (at least 10 reps total)
+  // Also require either duration > 0 OR at least 20 reps to ensure workout was actually completed
+  const hasDuration = l.durationSeconds && l.durationSeconds > 0;
+  const hasEnoughReps = totalReps >= 20;
   const hasMinimumReps = totalReps >= 10;
   
-  return hasValidExercise && hasMinimumReps;
+  return hasValidExercise && hasMinimumReps && (hasDuration || hasEnoughReps);
 }
 
 /**
