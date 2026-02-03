@@ -335,7 +335,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
             <div className="text-[12px] text-gray-500">
               {hoverIndex !== null && data[hoverIndex]
                 ? data[hoverIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : isMobile ? 'Tap a bar' : 'Hover or tap bar'}
+                : 'Hover or tap bar'}
             </div>
           </div>
         )}
@@ -435,8 +435,8 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                     rx="2"
                     className="transition-all duration-150 cursor-pointer"
                     style={{ opacity: isHovered ? 1 : 0.8 }}
-                    onMouseEnter={() => !isMobile && setHoverIndex(index)}
-                    onMouseLeave={() => !isMobile && setHoverIndex(null)}
+                    onMouseEnter={() => setHoverIndex(index)}
+                    onMouseLeave={() => setHoverIndex(null)}
                     onClick={() => setHoverIndex(index)}
                   />
                   
