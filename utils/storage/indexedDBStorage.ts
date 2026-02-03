@@ -1,9 +1,10 @@
 import { StorageAdapter } from './types';
-import { SavedWorkout } from '../../types';
+import { SavedWorkout, WorkoutLog } from '../../types';
 
 const DB_NAME = 'pulsefit-db';
-const DB_VERSION = 1;
-const STORE_NAME = 'savedWorkouts';
+const DB_VERSION = 2;
+const STORE_WORKOUTS = 'savedWorkouts';
+const STORE_LOGS = 'workoutLogs';
 
 /**
  * IndexedDB storage implementation for workout data.
@@ -42,8 +43,8 @@ export class IndexedDBStorage implements StorageAdapter {
         const db = (event.target as IDBOpenDBRequest).result;
 
         // Create object store if it doesn't exist
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const objectStore = db.createObjectStore(STORE_NAME, {
+        if (!db.objectStoreNames.contains(STORE_WORKOUTS)) {
+          const objectStore = db.createObjectStore(STORE_WORKOUTS, {
             keyPath: 'id',
           });
 
@@ -51,12 +52,13 @@ export class IndexedDBStorage implements StorageAdapter {
           objectStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
+        if (!db.objectStoreNames.contains(STORE_LOGS)) {
+          const logStore = db.createObjectStore(STORE_LOGS, { keyPath: 'id' });
+          logStore.createIndex('completedAt', 'completedAt', { unique: false });
+          logStore.createIndex('workoutId', 'workoutId', { unique: false });
+        }
+
         // Future object stores (commented for now):
-        // if (!db.objectStoreNames.contains('workoutLogs')) {
-        //   const logStore = db.createObjectStore('workoutLogs', { keyPath: 'id' });
-        //   logStore.createIndex('completedAt', 'completedAt', { unique: false });
-        //   logStore.createIndex('workoutId', 'workoutId', { unique: false });
-        // }
         // if (!db.objectStoreNames.contains('exerciseLogs')) {
         //   const exerciseStore = db.createObjectStore('exerciseLogs', { keyPath: 'id' });
         //   exerciseStore.createIndex('exerciseId', 'exerciseId', { unique: false });
@@ -95,8 +97,8 @@ export class IndexedDBStorage implements StorageAdapter {
     const db = await this.ensureDatabase();
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction([STORE_WORKOUTS], 'readwrite');
+      const store = transaction.objectStore(STORE_WORKOUTS);
       const request = store.put(workout);
 
       request.onerror = () => {
@@ -116,8 +118,8 @@ export class IndexedDBStorage implements StorageAdapter {
     const db = await this.ensureDatabase();
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction([STORE_WORKOUTS], 'readonly');
+      const store = transaction.objectStore(STORE_WORKOUTS);
       const request = store.getAll();
 
       request.onerror = () => {
@@ -137,8 +139,8 @@ export class IndexedDBStorage implements StorageAdapter {
     const db = await this.ensureDatabase();
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction([STORE_WORKOUTS], 'readwrite');
+      const store = transaction.objectStore(STORE_WORKOUTS);
       const getRequest = store.get(id);
 
       getRequest.onerror = () => {
@@ -173,8 +175,8 @@ export class IndexedDBStorage implements StorageAdapter {
     const db = await this.ensureDatabase();
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
+      const transaction = db.transaction([STORE_WORKOUTS], 'readwrite');
+      const store = transaction.objectStore(STORE_WORKOUTS);
       const request = store.delete(id);
 
       request.onerror = () => {
@@ -195,5 +197,70 @@ export class IndexedDBStorage implements StorageAdapter {
     // Migration logic is in migration.ts
     // This method exists for interface compliance
     return Promise.resolve();
+  }
+
+  /**
+   * Save a workout log entry
+   */
+  async saveWorkoutLog(log: WorkoutLog): Promise<void> {
+    const db = await this.ensureDatabase();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_LOGS], 'readwrite');
+      const store = transaction.objectStore(STORE_LOGS);
+      const request = store.put(log);
+
+      request.onerror = () => {
+        reject(new Error(`Failed to save workout log: ${request.error?.message}`));
+      };
+
+      request.onsuccess = () => {
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Load workout logs sorted by completedAt (newest first)
+   */
+  async loadWorkoutLogs(): Promise<WorkoutLog[]> {
+    const db = await this.ensureDatabase();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_LOGS], 'readonly');
+      const store = transaction.objectStore(STORE_LOGS);
+      const request = store.getAll();
+
+      request.onerror = () => {
+        reject(new Error(`Failed to load workout logs: ${request.error?.message}`));
+      };
+
+      request.onsuccess = () => {
+        const logs = (request.result || []) as WorkoutLog[];
+        logs.sort((a, b) => b.completedAt - a.completedAt);
+        resolve(logs);
+      };
+    });
+  }
+
+  /**
+   * Delete a workout log entry by ID
+   */
+  async deleteWorkoutLog(id: string): Promise<void> {
+    const db = await this.ensureDatabase();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_LOGS], 'readwrite');
+      const store = transaction.objectStore(STORE_LOGS);
+      const request = store.delete(id);
+
+      request.onerror = () => {
+        reject(new Error(`Failed to delete workout log: ${request.error?.message}`));
+      };
+
+      request.onsuccess = () => {
+        resolve();
+      };
+    });
   }
 }

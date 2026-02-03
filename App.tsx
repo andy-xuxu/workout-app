@@ -16,10 +16,34 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
-import { Workout, Category, SavedWorkout } from './types';
+import { Workout, Category, SavedWorkout, WorkoutLog, ExerciseLog, SetLog } from './types';
 import { storage } from './utils/storage';
 
-type AppMode = 'landing' | 'view' | 'create' | 'saved' | 'view-saved' | 'workout-mode' | 'workout-active';
+type AppMode =
+  | 'landing'
+  | 'view'
+  | 'create'
+  | 'saved'
+  | 'view-saved'
+  | 'workout-mode'
+  | 'workout-active'
+  | 'workout-history';
+
+type TrackingMode = 'quick' | 'detailed';
+
+type SetInput = {
+  id: string;
+  weight: string;
+  reps: string;
+};
+
+type ExerciseTrackingState = {
+  mode: TrackingMode;
+  quickSets: string;
+  quickReps: string;
+  quickWeight: string;
+  sets: SetInput[];
+};
 
 // Constants
 const BADGE_INLINE_STYLES: React.CSSProperties = {
@@ -55,6 +79,40 @@ const formatDate = (timestamp: number): string => {
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
   return date.toLocaleDateString();
+};
+
+const createDefaultTrackingState = (): ExerciseTrackingState => {
+  const defaultSets: SetInput[] = [];
+  for (let i = 0; i < 3; i += 1) {
+    defaultSets.push({
+      id: `default-set-${Date.now()}-${i}-${Math.random()}`,
+      weight: '0',
+      reps: '10',
+    });
+  }
+  return {
+    mode: 'detailed',
+    quickSets: '3',
+    quickReps: '10',
+    quickWeight: '0',
+    sets: defaultSets,
+  };
+};
+
+const parseNumber = (value: string): number | null => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const calculateLogVolume = (log: WorkoutLog): number => {
+  return log.exercises.reduce((total, exercise) => {
+    const exerciseVolume = exercise.sets.reduce((sum, set) => {
+      const weight = set.weight ?? 0;
+      return sum + weight * set.reps;
+    }, 0);
+    return total + exerciseVolume;
+  }, 0);
 };
 
 // Mobile detection hook
@@ -729,6 +787,12 @@ interface ExerciseCardProps {
   isCompleted: boolean;
   isAnimatingOut: boolean;
   onMarkComplete: () => void;
+  trackingState: ExerciseTrackingState;
+  onUpdateQuick: (field: 'quickSets' | 'quickReps' | 'quickWeight', value: string) => void;
+  onToggleMode: () => void;
+  onAddSet: () => void;
+  onUpdateSet: (setId: string, field: 'weight' | 'reps', value: string) => void;
+  onRemoveSet: (setId: string) => void;
   getCategoryStyles: (category: Category) => { gradient: string; border: string; text: string; bg: string };
 }
 
@@ -739,14 +803,20 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   isCompleted,
   isAnimatingOut,
   onMarkComplete,
+  trackingState,
+  onUpdateQuick,
+  onToggleMode,
+  onAddSet,
+  onUpdateSet,
+  onRemoveSet,
   getCategoryStyles,
 }) => {
   const styles = getCategoryStyles(workout.category);
 
   return (
-    <div className="w-full flex-shrink-0 flex items-center justify-center p-2 md:p-6" style={{ perspective: '1000px', maxHeight: '100%' }}>
+    <div className="w-full flex-shrink-0 flex items-center justify-center p-2 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
       <div
-        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col max-h-full ${
+        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col h-full max-h-full ${
           isCompleted ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
         }`}
         style={{
@@ -763,9 +833,19 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         {/* Category accent bar */}
         <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
 
+        {isCompleted && (
+          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center backdrop-blur-[2px] transition-opacity duration-300 z-50 rounded-[1.5rem] md:rounded-[1.75rem]">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/50 animate-pulse">
+              <svg className="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Image area - flashcard front */}
-          <div className="relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(100%, 40vh)' }}>
+          <div className="relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(30vh, 200px)' }}>
             <div className="absolute inset-0 flex items-center justify-center p-2">
               {workout.gifUrl ? (
                 <img
@@ -778,36 +858,95 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 <EmptyGifPlaceholder size="large" />
               )}
             </div>
-            {isCompleted && (
-              <div className="absolute inset-0 bg-green-500/25 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                  <svg className="w-8 h-8 md:w-10 md:h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Content area - flashcard back */}
-          <div className="p-3 md:p-6 flex flex-col gap-2 md:gap-4 flex-1 min-h-0 overflow-y-auto">
+          <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div>
-              <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-1.5 md:mb-2`}>
+              <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-2 md:mb-3`}>
                 {workout.tag}
               </span>
-              <h3 className="text-lg md:text-2xl font-bold leading-tight">{workout.name}</h3>
+              <h3 className="text-lg md:text-2xl font-bold leading-tight mb-2">{workout.name}</h3>
             </div>
-            <p className="text-gray-400 text-xs md:text-sm leading-relaxed line-clamp-2">{workout.description}</p>
-            <div className="flex flex-wrap gap-1 md:gap-1.5">
+            <p className="text-gray-400 text-xs md:text-sm leading-relaxed line-clamp-2 mb-2">{workout.description}</p>
+            <div className="flex flex-wrap gap-1.5 md:gap-2 mb-3">
               {workout.targetMuscles.map((m) => (
                 <span key={m} className="px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-800/60 text-gray-400 text-[9px] md:text-[10px] font-bold rounded-md">
                   {m}
                 </span>
               ))}
             </div>
+            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4">
+              <div className="mb-4">
+                <span className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-bold">
+                  Track Sets
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 px-3 pb-2">
+                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold w-8">SET</span>
+                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold flex-1">LBS</span>
+                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold w-20">REPS</span>
+                  <div className="w-[34px]"></div>
+                </div>
+                {trackingState.sets.map((set, idx) => {
+                  const isDefaultWeight = set.weight === '0' || set.weight === '';
+                  const isDefaultReps = set.reps === '10' || set.reps === '';
+                  return (
+                    <div
+                      key={set.id}
+                      className="flex items-center gap-2 bg-[#121212] border border-gray-800 rounded-lg px-3 py-2.5"
+                    >
+                      <span className="text-[9px] md:text-xs text-gray-500 w-8">#{idx + 1}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="decimal"
+                        value={set.weight}
+                        onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
+                        className={`flex-1 px-2 py-1.5 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 ${
+                          isDefaultWeight ? 'text-gray-500' : 'text-white'
+                        }`}
+                        placeholder="0"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        value={set.reps}
+                        onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
+                        className={`w-20 px-2 py-1.5 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 ${
+                          isDefaultReps ? 'text-gray-500' : 'text-white'
+                        }`}
+                        placeholder="10-12"
+                      />
+                      <button
+                        onClick={() => onRemoveSet(set.id)}
+                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                        aria-label="Remove set"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={onAddSet}
+                  className="w-full py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Set
+                </button>
+              </div>
+            </div>
             <button
               onClick={onMarkComplete}
-              className={`mt-auto w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
+              className={`mt-4 md:mt-6 w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
                 isCompleted
                   ? 'bg-green-600 text-white cursor-default'
                   : 'bg-white text-black hover:bg-gray-100 shadow-lg'
@@ -836,6 +975,12 @@ interface WorkoutCarouselProps {
   workoutName: string;
   workouts: Workout[];
   completedExercises: Set<string>;
+  trackingByExercise: Record<string, ExerciseTrackingState>;
+  onUpdateQuick: (workoutId: string, field: 'quickSets' | 'quickReps' | 'quickWeight', value: string) => void;
+  onToggleMode: (workoutId: string) => void;
+  onAddSet: (workoutId: string) => void;
+  onUpdateSet: (workoutId: string, setId: string, field: 'weight' | 'reps', value: string) => void;
+  onRemoveSet: (workoutId: string, setId: string) => void;
   onMarkComplete: (workoutId: string) => void;
   onBack: () => void;
   onWorkoutComplete: () => void;
@@ -849,6 +994,12 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   workoutName,
   workouts,
   completedExercises,
+  trackingByExercise,
+  onUpdateQuick,
+  onToggleMode,
+  onAddSet,
+  onUpdateSet,
+  onRemoveSet,
   onMarkComplete,
   onBack,
   onWorkoutComplete,
@@ -946,13 +1097,19 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
             const isAnimatingOut = animatingOutId === workout.id;
             
             return (
-              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-center">
+              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center p-2 md:p-0 overflow-y-auto">
                 <ExerciseCard
                   workout={workout}
                   index={idx}
                   total={total}
                   isCompleted={completedExercises.has(workout.id)}
                   isAnimatingOut={isAnimatingOut}
+                  trackingState={trackingByExercise[workout.id] || createDefaultTrackingState()}
+                  onUpdateQuick={(field, value) => onUpdateQuick(workout.id, field, value)}
+                  onToggleMode={() => onToggleMode(workout.id)}
+                  onAddSet={() => onAddSet(workout.id)}
+                  onUpdateSet={(setId, field, value) => onUpdateSet(workout.id, setId, field, value)}
+                  onRemoveSet={(setId) => onRemoveSet(workout.id, setId)}
                   onMarkComplete={() => {
                     if (isCurrentCard && !isAnimatingOut) {
                       setAnimatingOutId(workout.id);
@@ -1060,6 +1217,68 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
         >
           Back to Workout Selection
         </button>
+      </div>
+    </div>
+  );
+};
+
+// Workout Log Detail Modal
+interface WorkoutLogDetailModalProps {
+  log: WorkoutLog;
+  onClose: () => void;
+}
+
+const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onClose }) => {
+  const totalVolume = calculateLogVolume(log);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl relative">
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="p-6 md:p-8">
+          <div className="mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">{log.workoutName}</h2>
+            <p className="text-gray-500 text-sm">
+              Completed {new Date(log.completedAt).toLocaleString()}
+            </p>
+            <div className="flex flex-wrap gap-4 text-xs text-gray-500 mt-3">
+              <span>{log.exercises.length} exercises</span>
+              <span>{Math.round(totalVolume)} total volume</span>
+              {log.durationSeconds !== undefined && (
+                <span>{Math.round(log.durationSeconds / 60)} min duration</span>
+              )}
+            </div>
+          </div>
+          <div className="space-y-4">
+            {log.exercises.map((exercise) => (
+              <div key={exercise.exerciseId} className="bg-[#111111] border border-gray-800 rounded-2xl p-4">
+                <h3 className="text-lg font-bold mb-2">{exercise.exerciseName}</h3>
+                {exercise.sets.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No sets recorded.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {exercise.sets.map((set) => (
+                      <div key={`${exercise.exerciseId}-${set.setNumber}`} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Set {set.setNumber}</span>
+                        <span className="text-gray-200">
+                          {set.weight !== undefined ? `${set.weight} x ` : ''}
+                          {set.reps} reps
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1350,8 +1569,13 @@ const App: React.FC = () => {
   const [showCheckmarkAnimation, setShowCheckmarkAnimation] = useState(false);
   const [activeWorkout, setActiveWorkout] = useState<{ name: string; workouts: Workout[] } | null>(null);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [trackingByExercise, setTrackingByExercise] = useState<Record<string, ExerciseTrackingState>>({});
+  const [exerciseLogsById, setExerciseLogsById] = useState<Record<string, ExerciseLog>>({});
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [showWorkoutCompletion, setShowWorkoutCompletion] = useState(false);
   const [wasDrawerOpenBeforeModal, setWasDrawerOpenBeforeModal] = useState(false);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+  const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1482,8 +1706,12 @@ const App: React.FC = () => {
     setOriginalWorkout(null);
     setActiveWorkout(null);
     setCompletedExercises(new Set());
+    setTrackingByExercise({});
+    setExerciseLogsById({});
+    setWorkoutStartTime(null);
     setShowWorkoutCompletion(false);
     setWasDrawerOpenBeforeModal(false);
+    setSelectedWorkoutLog(null);
     closeDrawer();
   };
 
@@ -1491,12 +1719,151 @@ const App: React.FC = () => {
     if (item.workouts.length === 0) return;
     setActiveWorkout({ name: item.name, workouts: item.workouts });
     setCompletedExercises(new Set());
+    const trackingState: Record<string, ExerciseTrackingState> = {};
+    item.workouts.forEach((workout) => {
+      trackingState[workout.id] = createDefaultTrackingState();
+    });
+    setTrackingByExercise(trackingState);
+    setExerciseLogsById({});
+    setWorkoutStartTime(Date.now());
     setShowWorkoutCompletion(false);
     setAppMode('workout-active');
   };
 
+  const buildExerciseLog = (workout: Workout, tracking: ExerciseTrackingState, completedAt: number): ExerciseLog => {
+    const detailedSets = tracking.sets.reduce<SetLog[]>((acc, set, idx) => {
+      const reps = parseNumber(set.reps);
+      if (reps === null || reps <= 0) return acc;
+      const weight = parseNumber(set.weight);
+      const next: SetLog = {
+        setNumber: idx + 1,
+        reps,
+        completedAt,
+      };
+      // Only include weight if it's greater than 0
+      if (weight !== null && weight > 0) {
+        next.weight = weight;
+      }
+      acc.push(next);
+      return acc;
+    }, []);
+
+    return {
+      exerciseId: workout.id,
+      exerciseName: workout.name,
+      sets: detailedSets,
+    };
+  };
+
   const handleCompleteExercise = (workoutId: string) => {
+    if (!activeWorkout) return;
+    const workout = activeWorkout.workouts.find((item) => item.id === workoutId);
+    if (!workout) return;
+    const tracking = trackingByExercise[workoutId] || createDefaultTrackingState();
+    const completedAt = Date.now();
+    const log = buildExerciseLog(workout, tracking, completedAt);
+    setExerciseLogsById((prev) => ({ ...prev, [workoutId]: log }));
     setCompletedExercises((prev) => new Set(prev).add(workoutId));
+  };
+
+  const handleUpdateQuick = (
+    workoutId: string,
+    field: 'quickSets' | 'quickReps' | 'quickWeight',
+    value: string
+  ) => {
+    setTrackingByExercise((prev) => {
+      const current = prev[workoutId] || createDefaultTrackingState();
+      return {
+        ...prev,
+        [workoutId]: {
+          ...current,
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const handleToggleMode = (workoutId: string) => {
+    setTrackingByExercise((prev) => {
+      const current = prev[workoutId] || createDefaultTrackingState();
+      const nextMode: TrackingMode = current.mode === 'quick' ? 'detailed' : 'quick';
+      let nextSets = current.sets;
+      if (nextMode === 'detailed' && current.sets.length === 0) {
+        const quickSets = parseNumber(current.quickSets);
+        const count = quickSets && quickSets > 0 ? Math.min(quickSets, 10) : 0;
+        const sets: SetInput[] = [];
+        for (let i = 0; i < count; i += 1) {
+          sets.push({
+            id: `${workoutId}-set-${Date.now()}-${i}`,
+            weight: current.quickWeight,
+            reps: current.quickReps,
+          });
+        }
+        nextSets = sets;
+      }
+      return {
+        ...prev,
+        [workoutId]: {
+          ...current,
+          mode: nextMode,
+          sets: nextSets,
+        },
+      };
+    });
+  };
+
+  const handleAddSet = (workoutId: string) => {
+    setTrackingByExercise((prev) => {
+      const current = prev[workoutId] || createDefaultTrackingState();
+      const last = current.sets[current.sets.length - 1];
+      const nextSet: SetInput = {
+        id: `${workoutId}-set-${Date.now()}-${Math.random()}`,
+        weight: last?.weight && last.weight !== '0' ? last.weight : '0',
+        reps: last?.reps && last.reps !== '' ? last.reps : '10',
+      };
+      return {
+        ...prev,
+        [workoutId]: {
+          ...current,
+          sets: [...current.sets, nextSet],
+        },
+      };
+    });
+  };
+
+  const handleUpdateSet = (
+    workoutId: string,
+    setId: string,
+    field: 'weight' | 'reps',
+    value: string
+  ) => {
+    setTrackingByExercise((prev) => {
+      const current = prev[workoutId] || createDefaultTrackingState();
+      const nextSets = current.sets.map((set) =>
+        set.id === setId ? { ...set, [field]: value } : set
+      );
+      return {
+        ...prev,
+        [workoutId]: {
+          ...current,
+          sets: nextSets,
+        },
+      };
+    });
+  };
+
+  const handleRemoveSet = (workoutId: string, setId: string) => {
+    setTrackingByExercise((prev) => {
+      const current = prev[workoutId] || createDefaultTrackingState();
+      const nextSets = current.sets.filter((set) => set.id !== setId);
+      return {
+        ...prev,
+        [workoutId]: {
+          ...current,
+          sets: nextSets,
+        },
+      };
+    });
   };
 
   const handleBackFromWorkoutActive = () => {
@@ -1505,9 +1872,46 @@ const App: React.FC = () => {
     setAppMode('workout-mode');
     setActiveWorkout(null);
     setCompletedExercises(new Set());
+    setTrackingByExercise({});
+    setExerciseLogsById({});
+    setWorkoutStartTime(null);
   };
 
-  const handleWorkoutComplete = () => {
+  const handleWorkoutComplete = async () => {
+    if (!activeWorkout) {
+      setShowWorkoutCompletion(true);
+      return;
+    }
+
+    const completedAt = Date.now();
+    const durationSeconds =
+      workoutStartTime && completedAt > workoutStartTime
+        ? Math.floor((completedAt - workoutStartTime) / 1000)
+        : undefined;
+
+    const exercises: ExerciseLog[] = activeWorkout.workouts.map((workout) => {
+      return (
+        exerciseLogsById[workout.id] ||
+        buildExerciseLog(workout, trackingByExercise[workout.id] || createDefaultTrackingState(), completedAt)
+      );
+    });
+
+    const workoutLog: WorkoutLog = {
+      id: `${completedAt}-${activeWorkout.name}`,
+      workoutName: activeWorkout.name,
+      completedAt,
+      durationSeconds,
+      exercises,
+    };
+
+    try {
+      await storage.saveWorkoutLog(workoutLog);
+      const updatedLogs = await storage.loadWorkoutLogs();
+      setWorkoutLogs(updatedLogs);
+    } catch (error) {
+      console.error('Error saving workout log:', error);
+    }
+
     setShowWorkoutCompletion(true);
   };
 
@@ -1515,6 +1919,9 @@ const App: React.FC = () => {
     setShowWorkoutCompletion(false);
     setActiveWorkout(null);
     setCompletedExercises(new Set());
+    setTrackingByExercise({});
+    setExerciseLogsById({});
+    setWorkoutStartTime(null);
     setAppMode('workout-mode');
   };
 
@@ -1687,6 +2094,11 @@ const App: React.FC = () => {
     setAppMode('saved');
   };
 
+  const handleViewWorkoutHistory = () => {
+    setSelectedWorkoutLog(null);
+    setAppMode('workout-history');
+  };
+
   const isWorkoutSelected = (workoutId: string) => {
     return customWorkouts.some(w => w.id === workoutId);
   };
@@ -1699,6 +2111,13 @@ const App: React.FC = () => {
     });
   }, []);
 
+  useEffect(() => {
+    storage.loadWorkoutLogs().then(setWorkoutLogs).catch((error) => {
+      console.error('Error loading workout logs:', error);
+      setWorkoutLogs([]);
+    });
+  }, []);
+
   if (appMode === 'landing') {
     return (
       <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
@@ -1707,7 +2126,7 @@ const App: React.FC = () => {
             PulseFit Pro
           </h1>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
             <button
               onClick={handleViewWorkouts}
               className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
@@ -1753,6 +2172,21 @@ const App: React.FC = () => {
                 <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Access your routines</p>
               </div>
             </button>
+
+            <button
+              onClick={handleViewWorkoutHistory}
+              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-8 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
+            >
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald-500/50">
+                  <svg className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-emerald-400">Workout History</h2>
+                <p className="text-gray-500 text-sm text-center transition-colors duration-300 group-hover:text-gray-400">Review past sessions</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -1778,6 +2212,12 @@ const App: React.FC = () => {
           workoutName={activeWorkout.name}
           workouts={activeWorkout.workouts}
           completedExercises={completedExercises}
+          trackingByExercise={trackingByExercise}
+          onUpdateQuick={handleUpdateQuick}
+          onToggleMode={handleToggleMode}
+          onAddSet={handleAddSet}
+          onUpdateSet={handleUpdateSet}
+          onRemoveSet={handleRemoveSet}
           onMarkComplete={handleCompleteExercise}
           onBack={handleBackFromWorkoutActive}
           onWorkoutComplete={handleWorkoutComplete}
@@ -1792,6 +2232,24 @@ const App: React.FC = () => {
           />
         )}
       </>
+    );
+  }
+
+  if (appMode === 'workout-history') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
+        <Header onBack={handleBackToLanding} />
+
+        <main className="max-w-6xl mx-auto">
+          <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
+            <p className="text-gray-500 text-sm">Complete a workout to start tracking your progress.</p>
+          </div>
+        </main>
+      </div>
     );
   }
 

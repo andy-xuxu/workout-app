@@ -1,7 +1,8 @@
 import { StorageAdapter } from './types';
-import { SavedWorkout } from '../../types';
+import { SavedWorkout, WorkoutLog } from '../../types';
 
 const STORAGE_KEY = 'pulsefit-saved-workouts';
+const LOGS_STORAGE_KEY = 'pulsefit-workout-logs';
 
 /**
  * localStorage adapter implementation.
@@ -75,5 +76,48 @@ export class LocalStorageAdapter implements StorageAdapter {
   async migrateFromLocalStorage(): Promise<void> {
     // No-op for localStorage adapter
     return Promise.resolve();
+  }
+
+  /**
+   * Save a workout log entry
+   */
+  async saveWorkoutLog(log: WorkoutLog): Promise<void> {
+    try {
+      const logs = await this.loadWorkoutLogs();
+      logs.push(log);
+      localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
+    } catch (error) {
+      console.error('Error saving workout log to localStorage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load workout logs sorted by completedAt (newest first)
+   */
+  async loadWorkoutLogs(): Promise<WorkoutLog[]> {
+    try {
+      const stored = localStorage.getItem(LOGS_STORAGE_KEY);
+      if (!stored) return [];
+      const logs = JSON.parse(stored) as WorkoutLog[];
+      return logs.sort((a, b) => b.completedAt - a.completedAt);
+    } catch (error) {
+      console.error('Error loading workout logs from localStorage:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a workout log entry by ID
+   */
+  async deleteWorkoutLog(id: string): Promise<void> {
+    try {
+      const logs = await this.loadWorkoutLogs();
+      const filtered = logs.filter(log => log.id !== id);
+      localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch (error) {
+      console.error('Error deleting workout log from localStorage:', error);
+      throw error;
+    }
   }
 }

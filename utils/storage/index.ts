@@ -94,6 +94,21 @@ class StorageWrapper implements StorageAdapter {
     const adapter = await this.getAdapter();
     return adapter.migrateFromLocalStorage();
   }
+
+  async saveWorkoutLog(log: import('../../types').WorkoutLog): Promise<void> {
+    const adapter = await this.getAdapter();
+    return adapter.saveWorkoutLog(log);
+  }
+
+  async loadWorkoutLogs(): Promise<import('../../types').WorkoutLog[]> {
+    const adapter = await this.getAdapter();
+    return adapter.loadWorkoutLogs();
+  }
+
+  async deleteWorkoutLog(id: string): Promise<void> {
+    const adapter = await this.getAdapter();
+    return adapter.deleteWorkoutLog(id);
+  }
 }
 
 /**

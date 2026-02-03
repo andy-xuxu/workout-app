@@ -1,4 +1,4 @@
-import { SavedWorkout } from '../../types';
+import { SavedWorkout, WorkoutLog } from '../../types';
 
 /**
  * Storage adapter interface for workout data persistence.
@@ -31,10 +31,18 @@ export interface StorageAdapter {
    */
   migrateFromLocalStorage(): Promise<void>;
 
-  // Future methods for tracking features (commented for now):
-  // saveWorkoutLog(log: WorkoutLog): Promise<void>;
-  // loadWorkoutLogs(filters?: LogFilters): Promise<WorkoutLog[]>;
-  // saveUserGoal(goal: UserGoal): Promise<void>;
-  // loadUserGoals(): Promise<UserGoal[]>;
-  // getUserStats(): Promise<UserStats>;
+  /**
+   * Save a workout log entry
+   */
+  saveWorkoutLog(log: WorkoutLog): Promise<void>;
+
+  /**
+   * Load workout logs, sorted by completion date (newest first)
+   */
+  loadWorkoutLogs(): Promise<WorkoutLog[]>;
+
+  /**
+   * Delete a workout log entry by ID
+   */
+  deleteWorkoutLog(id: string): Promise<void>;
 }
