@@ -323,8 +323,22 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-sm font-bold text-white">{title}</h3>
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
+          <p className="text-[12px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
         </div>
+        {data.length > 0 && (
+          <div className="text-right min-w-[72px]">
+            <div className="text-sm font-bold text-emerald-400 tabular-nums">
+              {hoverIndex !== null && data[hoverIndex]
+                ? formatTooltipValue(data[hoverIndex].value)
+                : '—'}
+            </div>
+            <div className="text-[12px] text-gray-500">
+              {hoverIndex !== null && data[hoverIndex]
+                ? data[hoverIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : isMobile ? 'Tap a bar' : 'Hover or tap bar'}
+            </div>
+          </div>
+        )}
       </div>
 
       {data.length === 0 ? (
@@ -332,7 +346,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           No data yet
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative" onMouseLeave={() => setHoverIndex(null)}>
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height: `${height}px` }}>
             <defs>
               <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
@@ -421,9 +435,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                     rx="2"
                     className="transition-all duration-150 cursor-pointer"
                     style={{ opacity: isHovered ? 1 : 0.8 }}
-                    onMouseEnter={() => setHoverIndex(index)}
-                    onMouseLeave={() => setHoverIndex(null)}
-                    onClick={() => onPointSelect?.(point.date)}
+                    onMouseEnter={() => !isMobile && setHoverIndex(index)}
+                    onMouseLeave={() => !isMobile && setHoverIndex(null)}
+                    onClick={() => setHoverIndex(index)}
                   />
                   
                   {/* X-axis label */}
@@ -433,7 +447,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
                       y={paddingTop + chartHeight + 20}
                       textAnchor="middle"
                       fill="#9ca3af"
-                      fontSize="11"
+                      fontSize="12"
                       className="font-medium"
                     >
                       {formatDate(point.date)}
@@ -443,27 +457,6 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
               );
             })}
           </svg>
-          
-          {/* Tooltip */}
-          {hoverIndex !== null && data[hoverIndex] && (
-            <div 
-              className="absolute pointer-events-none bg-black/90 text-white text-[10px] px-2 py-1.5 rounded-lg border border-gray-700 shadow-2xl z-20 flex flex-col items-center min-w-[60px] transition-all duration-200"
-              style={{
-                left: `${paddingLeft + hoverIndex * barSpacing + barSpacing / 2}%`,
-                transform: 'translateX(-50%)',
-                bottom: `${((data[hoverIndex].value / actualRange) * chartHeight) + paddingBottom + 8}px`,
-                // Use actual pixel calculation for left since SVG is responsive
-                left: `${(paddingLeft + hoverIndex * barSpacing + barSpacing / 2) * (100 / width)}%`
-              }}
-            >
-              <div className="font-bold text-emerald-400">{formatTooltipValue(data[hoverIndex].value)}</div>
-              <div className="text-[8px] text-gray-400 whitespace-nowrap">
-                {data[hoverIndex].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </div>
-              {/* Tooltip Arrow */}
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-black border-r border-b border-gray-700 rotate-45" />
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -2604,6 +2597,70 @@ const App: React.FC = () => {
     setWasDrawerOpenBeforeModal(false);
     setSelectedWorkoutLog(null);
     closeDrawer();
+  };
+
+  const MobileTabBar = () => {
+    if (!isMobile) return null;
+    
+    // Only show on main screens
+    const showOnModes = ['landing', 'workout-mode', 'workout-history', 'saved', 'view', 'create', 'view-saved'];
+    if (!showOnModes.includes(appMode)) return null;
+
+    const tabs = [
+      { id: 'landing', label: 'Home', icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      )},
+      { id: 'workout-mode', label: 'Workout', icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )},
+      { id: 'workout-history', label: 'History', icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+        </svg>
+      )},
+      { id: 'saved', label: 'Library', icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+      )},
+    ];
+
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0d0d0d]/80 backdrop-blur-xl border-t border-white/5 z-50 px-2 pb-safe-area">
+        <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+          {tabs.map((tab) => {
+            const isActive = appMode === tab.id || (tab.id === 'workout-mode' && (appMode === 'view' || appMode === 'create')) || (tab.id === 'saved' && appMode === 'view-saved');
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (tab.id === 'landing') handleBackToLanding();
+                  else if (tab.id === 'workout-mode') handleViewWorkouts();
+                  else if (tab.id === 'workout-history') handleViewWorkoutHistory();
+                  else if (tab.id === 'saved') handleViewSavedWorkouts();
+                }}
+                className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
+                  isActive ? 'text-emerald-400' : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                  {tab.icon}
+                </div>
+                <span className="text-[10px] font-bold mt-1 uppercase tracking-wider">{tab.label}</span>
+                {isActive && (
+                  <div className="absolute bottom-1 w-1 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handleStartWorkout = (item: WorkoutSelectionItem) => {
