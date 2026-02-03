@@ -184,7 +184,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   const isMobile = useIsMobile();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const width = propWidth ?? 320;
-  const height = isMobile ? (propHeight ? propHeight * 1.2 : 240) : (propHeight ?? 140);
+  const height = isMobile ? (propHeight ? propHeight * 1.5 : 320) : (propHeight ?? 240);
   const paddingLeft = isMobile ? 60 : 50;
   const paddingRight = 20;
   const paddingTop = 20;
@@ -200,7 +200,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   const gradientColors = getGradientColors(colorClassName);
 
   // Calculate bar positions and dimensions
-  const barWidth = data.length > 0 ? Math.max(4, (chartWidth / data.length) * 0.7) : 0;
+  const barWidth = data.length > 0 ? Math.max(8, (chartWidth / data.length) * 0.8) : 0;
   const barSpacing = data.length > 0 ? chartWidth / data.length : 0;
 
   const formatDate = (date: Date): string => {
@@ -2450,18 +2450,18 @@ const App: React.FC = () => {
   const historyAggregated = useMemo(
     () => {
       const aggregated = aggregateLogsByPeriod(workoutLogs, historyPeriod);
-      // If period is 'day', always show last 10 days
+      // If period is 'day', always show last 7 days
       if (historyPeriod === 'day') {
         const now = new Date();
-        const last10Days: AggregatedMetrics[] = [];
-        for (let i = 9; i >= 0; i--) {
+        const last7Days: AggregatedMetrics[] = [];
+        for (let i = 6; i >= 0; i--) {
           const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
           const dateKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
           const existing = aggregated.find(a => a.dateKey === dateKey);
           if (existing) {
-            last10Days.push(existing);
+            last7Days.push(existing);
           } else {
-            last10Days.push({
+            last7Days.push({
               dateKey,
               date: d,
               totalDurationSeconds: 0,
@@ -2471,7 +2471,7 @@ const App: React.FC = () => {
             });
           }
         }
-        return last10Days;
+        return last7Days;
       }
       return aggregated;
     },
@@ -2485,7 +2485,7 @@ const App: React.FC = () => {
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 7; i++) {
       const completedAt = now - i * dayMs;
       const log: WorkoutLog = {
         id: `fake-${i}-${Date.now()}`,
@@ -3461,8 +3461,8 @@ const App: React.FC = () => {
                   }
                   onDoubleClick={() => handleOpenCalendar()}
                   onPointSelect={(date) => handleOpenCalendar(date)}
-                  width={640}
-                  height={280}
+                  width={800}
+                  height={400}
                   period={historyPeriod}
                 />
                 
