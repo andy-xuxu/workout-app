@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout, WorkoutLog, ExerciseLog, SetLog } from './types';
 import { storage } from './utils/storage';
+import { aggregateLogsByPeriod, calculateExercisePBs, formatChartData, pickSmartPeriod, type ExercisePB } from './utils/analytics';
 
 type AppMode =
   | 'landing'
@@ -128,6 +129,399 @@ const calculateTotalReps = (log: WorkoutLog): number => {
     }, 0);
     return total + exerciseReps;
   }, 0);
+};
+
+type TimeSeriesPoint = { date: Date; value: number };
+
+interface TimeSeriesChartProps {
+  title: string;
+  yAxisLabel: string;
+  colorClassName: string;
+  data: TimeSeriesPoint[];
+  onDoubleClick?: () => void;
+  onPointSelect?: (date: Date) => void;
+}
+
+// Helper function to extract colors from Tailwind gradient classes
+const getGradientColors = (colorClassName: string): { from: string; to: string } => {
+  // Map common Tailwind gradient classes to hex colors
+  const colorMap: Record<string, string> = {
+    'emerald-500': '#10b981',
+    'cyan-500': '#06b6d4',
+    'purple-500': '#a855f7',
+    'blue-500': '#3b82f6',
+    'pink-500': '#ec4899',
+    'orange-500': '#f97316',
+  };
+
+  const match = colorClassName.match(/from-(\S+)\s+to-(\S+)/);
+  if (match) {
+    const fromColor = colorMap[match[1]] || '#22c55e';
+    const toColor = colorMap[match[2]] || '#3b82f6';
+    return { from: fromColor, to: toColor };
+  }
+  
+  // Default fallback
+  return { from: '#22c55e', to: '#3b82f6' };
+};
+
+const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
+  title,
+  yAxisLabel,
+  colorClassName,
+  data,
+  onDoubleClick,
+  onPointSelect,
+}) => {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const width = 320;
+  const height = 140;
+  const padding = 24;
+
+  const values = data.map((point) => point.value);
+  const minValue = values.length ? Math.min(...values) : 0;
+  const maxValue = values.length ? Math.max(...values) : 0;
+  const range = Math.max(1, maxValue - minValue);
+  const gradientId = `chartGradient-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const gradientColors = getGradientColors(colorClassName);
+
+  const points = data.map((point, index) => {
+    const x = padding + (index / Math.max(1, data.length - 1)) * (width - padding * 2);
+    const y = height - padding - ((point.value - minValue) / range) * (height - padding * 2);
+    return { x, y, point };
+  });
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ');
+
+  const formatTooltipValue = (value: number) => {
+    if (yAxisLabel.toLowerCase().includes('min')) return `${Math.round(value)} min`;
+    if (yAxisLabel.toLowerCase().includes('sec')) return `${Math.round(value)} sec`;
+    return Math.round(value).toLocaleString();
+  };
+
+  return (
+    <div
+      className="bg-[#111111] border border-gray-800 rounded-2xl p-4 md:p-5 shadow-xl"
+      onDoubleClick={onDoubleClick}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-bold text-white">{title}</h3>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider">{yAxisLabel}</p>
+        </div>
+        <div className={`h-2 w-10 rounded-full bg-gradient-to-r ${colorClassName}`} />
+      </div>
+
+      {data.length === 0 ? (
+        <div className="h-[160px] flex items-center justify-center text-gray-600 text-sm">
+          No data yet
+        </div>
+      ) : (
+        <div className="relative">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[160px]">
+            <defs>
+              <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor={gradientColors.from} />
+                <stop offset="100%" stopColor={gradientColors.to} />
+              </linearGradient>
+            </defs>
+            <path
+              d={linePath}
+              fill="none"
+              stroke={`url(#${gradientId})`}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            {points.map((item, index) => (
+              <circle
+                key={`${item.point.date.toISOString()}-${index}`}
+                cx={item.x}
+                cy={item.y}
+                r={hoverIndex === index ? 4 : 3}
+                fill="#e5e7eb"
+                className="transition-all duration-150"
+                onMouseEnter={() => setHoverIndex(index)}
+                onMouseLeave={() => setHoverIndex(null)}
+                onClick={() => onPointSelect?.(item.point.date)}
+              />
+            ))}
+          </svg>
+          {hoverIndex !== null && points[hoverIndex] && (
+            <div className="absolute right-3 top-2 bg-black/80 text-white text-[10px] px-2 py-1 rounded-lg border border-gray-700">
+              <div className="font-semibold">{formatTooltipValue(points[hoverIndex].point.value)}</div>
+              <div className="text-gray-400">
+                {points[hoverIndex].point.date.toLocaleDateString()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface CalendarViewProps {
+  isOpen: boolean;
+  onClose: () => void;
+  workoutLogs: WorkoutLog[];
+  selectedDate?: Date;
+  onSelectLog: (log: WorkoutLog) => void;
+}
+
+const CalendarView: React.FC<CalendarViewProps> = ({
+  isOpen,
+  onClose,
+  workoutLogs,
+  selectedDate,
+  onSelectLog,
+}) => {
+  const initialDate = selectedDate ?? (workoutLogs[0] ? new Date(workoutLogs[0].completedAt) : new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
+  const [activeDateKey, setActiveDateKey] = useState<string | null>(
+    selectedDate ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).toISOString() : null
+  );
+
+  useEffect(() => {
+    if (selectedDate) {
+      const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      setCurrentMonth(monthStart);
+      setActiveDateKey(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).toISOString());
+    }
+  }, [selectedDate]);
+
+  if (!isOpen) return null;
+
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDayIndex = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+
+  const logsByDay = workoutLogs.reduce((acc: Record<string, WorkoutLog[]>, log) => {
+    const date = new Date(log.completedAt);
+    const key = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+    acc[key] = acc[key] ? [...acc[key], log] : [log];
+    return acc;
+  }, {} as Record<string, WorkoutLog[]>);
+
+  const volumesByDay = Object.entries(logsByDay).reduce((acc: Record<string, number>, [key, logs]) => {
+    const dayLogs = logs as WorkoutLog[];
+    acc[key] = dayLogs.reduce((sum, log) => sum + calculateLogVolume(log), 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const maxVolume = Math.max(1, ...Object.values(volumesByDay));
+
+  const dayCells = Array.from({ length: firstDayIndex + daysInMonth }, (_, idx) => {
+    if (idx < firstDayIndex) return null;
+    const day = idx - firstDayIndex + 1;
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const key = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+    const volume = volumesByDay[key] ?? 0;
+    const intensity = volume / maxVolume;
+    return {
+      day,
+      key,
+      intensity,
+      hasWorkout: !!logsByDay[key],
+    };
+  });
+
+  const activeLogs = activeDateKey ? logsByDay[activeDateKey] ?? [] : [];
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#0d0d0d] border border-gray-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+          <div>
+            <h3 className="text-xl font-bold text-white">Workout Calendar</h3>
+            <p className="text-xs text-gray-500">Tap a day to see workouts</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 bg-black/60 hover:bg-gray-800 rounded-full text-white border border-gray-800"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+            className="px-3 py-2 text-sm text-gray-400 hover:text-white"
+          >
+            Prev
+          </button>
+          <div className="text-sm font-semibold text-white">
+            {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </div>
+          <button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+            className="px-3 py-2 text-sm text-gray-400 hover:text-white"
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 p-5 text-xs text-gray-500">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+            <div key={label} className="text-center uppercase tracking-wide">
+              {label}
+            </div>
+          ))}
+          {dayCells.map((cell, index) =>
+            cell ? (
+              <button
+                key={cell.key}
+                onClick={() => setActiveDateKey(cell.key)}
+                className={`h-10 rounded-lg text-sm font-semibold transition-all ${
+                  cell.hasWorkout ? 'text-white' : 'text-gray-600'
+                } ${activeDateKey === cell.key ? 'ring-2 ring-emerald-500/60' : ''}`}
+                style={{
+                  backgroundColor: cell.hasWorkout ? `rgba(34, 197, 94, ${0.15 + cell.intensity * 0.6})` : '#121212',
+                }}
+              >
+                {cell.day}
+              </button>
+            ) : (
+              <div key={`empty-${index}`} />
+            )
+          )}
+        </div>
+
+        <div className="border-t border-gray-800 p-5 overflow-y-auto">
+          <h4 className="text-sm font-bold text-white mb-3">Workouts</h4>
+          {activeLogs.length === 0 ? (
+            <div className="text-sm text-gray-500">No workouts logged for this day.</div>
+          ) : (
+            <div className="space-y-3">
+              {activeLogs.map((log) => (
+                <button
+                  key={log.id}
+                  onClick={() => onSelectLog(log)}
+                  className="w-full text-left bg-[#111111] border border-gray-800 rounded-xl p-3 hover:border-gray-700 transition-all"
+                >
+                  <div className="text-sm font-semibold text-white">{log.workoutName}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {new Date(log.completedAt).toLocaleDateString()} • Volume: {Math.round(calculateLogVolume(log))} | Duration: {log.durationSeconds ? `${Math.round(log.durationSeconds / 60)} min` : 'N/A'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface PersonalBestsProps {
+  pbs: ExercisePB[];
+}
+
+const PersonalBests: React.FC<PersonalBestsProps> = ({ pbs }) => {
+  return (
+    <div className="bg-[#111111] border border-gray-800 rounded-2xl p-5 shadow-xl">
+      <h3 className="text-lg font-bold text-white mb-4">Personal Bests</h3>
+      {pbs.length === 0 ? (
+        <div className="text-sm text-gray-500">No personal bests yet.</div>
+      ) : (
+        <div className="space-y-4">
+          {pbs.map((pb) => (
+            <div key={pb.exerciseId} className="border border-gray-800 rounded-xl p-4 bg-[#0f0f0f]">
+              <div className="text-sm font-semibold text-white mb-2">{pb.exerciseName}</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-400">
+                <div>
+                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Weight</div>
+                  <div className="text-sm text-white">
+                    {pb.maxWeight?.value ?? 0} {pb.maxWeight ? '' : '—'}
+                  </div>
+                  {pb.maxWeight && (
+                    <div className="text-[10px] text-gray-500">{pb.maxWeight.date.toLocaleDateString()}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Reps</div>
+                  <div className="text-sm text-white">{pb.maxReps?.value ?? 0}</div>
+                  {pb.maxReps && (
+                    <div className="text-[10px] text-gray-500">{pb.maxReps.date.toLocaleDateString()}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-[10px] text-gray-500">Max Volume</div>
+                  <div className="text-sm text-white">{pb.maxVolume?.value ?? 0}</div>
+                  {pb.maxVolume && (
+                    <div className="text-[10px] text-gray-500">{pb.maxVolume.date.toLocaleDateString()}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ActivityFeedProps {
+  workoutLogs: WorkoutLog[];
+  initialCount?: number;
+  loadMoreCount?: number;
+  onSelectLog: (log: WorkoutLog) => void;
+}
+
+const ActivityFeed: React.FC<ActivityFeedProps> = ({
+  workoutLogs,
+  initialCount = 3,
+  loadMoreCount = 5,
+  onSelectLog,
+}) => {
+  const [visibleCount, setVisibleCount] = useState(initialCount);
+  const sortedLogs = [...workoutLogs].sort((a, b) => b.completedAt - a.completedAt);
+  const visibleLogs = sortedLogs.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedLogs.length;
+
+  return (
+    <div className="bg-[#111111] border border-gray-800 rounded-2xl p-5 shadow-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-white">Recent Activity</h3>
+        <span className="text-xs text-gray-500">{sortedLogs.length} workouts</span>
+      </div>
+      {visibleLogs.length === 0 ? (
+        <div className="text-sm text-gray-500">No workouts logged yet.</div>
+      ) : (
+        <div className="space-y-3">
+          {visibleLogs.map((log) => (
+            <button
+              key={log.id}
+              onClick={() => onSelectLog(log)}
+              className="w-full text-left bg-[#0f0f0f] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-white">{log.workoutName}</div>
+                <div className="text-xs text-gray-500">{new Date(log.completedAt).toLocaleDateString()}</div>
+              </div>
+              <div className="text-xs text-gray-500 mt-2 flex flex-wrap gap-3">
+                <span>{log.exercises.length} exercises</span>
+                <span>{Math.round(calculateLogVolume(log))} volume</span>
+                <span>{calculateTotalReps(log)} reps</span>
+                {log.durationSeconds ? <span>{Math.round(log.durationSeconds / 60)} min</span> : null}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {hasMore && (
+        <button
+          onClick={() => setVisibleCount((prev) => prev + loadMoreCount)}
+          className="mt-4 w-full py-2 text-xs uppercase tracking-wider bg-gray-800 hover:bg-gray-700 text-white rounded-xl"
+        >
+          Load {loadMoreCount} more
+        </button>
+      )}
+    </div>
+  );
 };
 
 
@@ -835,7 +1229,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   const [isGifExpanded, setIsGifExpanded] = useState(false);
 
   return (
-    <div className="w-full flex-shrink-0 flex items-center justify-center p-5 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
+    <div className="w-full flex-shrink-0 flex items-center justify-center p-0 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
       <div
         className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col h-full max-h-full ${
           isJustCompleted && isCurrentCard ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
@@ -944,7 +1338,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
           {/* Content area - flashcard back */}
           <div 
-            className={`p-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto transition-transform duration-300 ease-out ${isGifExpanded ? 'md:translate-y-0 translate-y-[100vh]' : 'translate-y-0'}`}
+            className={`p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto transition-transform duration-300 ease-out ${isGifExpanded ? 'md:translate-y-0 translate-y-[100vh]' : 'translate-y-0'}`}
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div>
@@ -975,6 +1369,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 
                 {/* Scrollable area */}
                 <div 
+                  data-scrollable-panel="true"
                   className="max-h-[200px] md:max-h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
@@ -1165,12 +1560,33 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   }, [goPrev, goNext]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Check if touch started within a scrollable element (like the track sets panel)
+    const target = e.target as HTMLElement;
+    const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
+    
+    // If touch started in a scrollable element, don't handle swipe
+    if (scrollableElement) {
+      return;
+    }
+    
     setTouchStart(e.touches[0].clientX);
     setTouchDelta(0);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart === null) return;
+    
+    // Check if we're moving within a scrollable element
+    const target = e.target as HTMLElement;
+    const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
+    
+    // If moving within scrollable element, don't handle swipe
+    if (scrollableElement) {
+      setTouchStart(null);
+      setTouchDelta(0);
+      return;
+    }
+    
     setTouchDelta(e.touches[0].clientX - touchStart);
   };
 
@@ -1218,7 +1634,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
             const isAnimatingOut = animatingOutId === workout.id;
             
             return (
-              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center p-5 md:p-0 overflow-y-auto">
+              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center px-3 py-4 md:p-0 overflow-y-auto">
                 <ExerciseCard
                   workout={workout}
                   index={idx}
@@ -1256,7 +1672,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
         </div>
       </div>
 
-      <div className="flex-shrink-0 p-4 pb-6 md:pb-6">
+      <div className="flex-shrink-0 p-3 pb-4 md:p-4 md:pb-6">
         {/* Flashcard dots */}
         <div className="flex justify-center gap-1.5 mb-4">
           {Array.from({ length: total }).map((_, i) => (
@@ -1792,6 +2208,7 @@ const App: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showCheckmarkAnimation, setShowCheckmarkAnimation] = useState(false);
   const [activeWorkout, setActiveWorkout] = useState<{ name: string; workouts: Workout[] } | null>(null);
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [trackingByExercise, setTrackingByExercise] = useState<Record<string, ExerciseTrackingState>>({});
   const [exerciseLogsById, setExerciseLogsById] = useState<Record<string, ExerciseLog>>({});
@@ -1800,6 +2217,8 @@ const App: React.FC = () => {
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
   const [completedWorkoutLog, setCompletedWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -1851,6 +2270,21 @@ const App: React.FC = () => {
       ? WORKOUT_LIBRARY
       : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
   }, [isCreateMode, selectedTag, selectedCategory]);
+
+  const historyPeriod = useMemo(() => pickSmartPeriod(workoutLogs), [workoutLogs]);
+  const historyAggregated = useMemo(
+    () => aggregateLogsByPeriod(workoutLogs, historyPeriod),
+    [workoutLogs, historyPeriod]
+  );
+  const historyDurationData = useMemo(() => {
+    return formatChartData(historyAggregated, 'duration').map((point) => ({
+      date: point.date,
+      value: Math.round(point.value / 60),
+    }));
+  }, [historyAggregated]);
+  const historyVolumeData = useMemo(() => formatChartData(historyAggregated, 'volume'), [historyAggregated]);
+  const historyRepsData = useMemo(() => formatChartData(historyAggregated, 'reps'), [historyAggregated]);
+  const historyPbs = useMemo(() => calculateExercisePBs(workoutLogs), [workoutLogs]);
 
   // Get tile IDs for prominent tile detection
   const tileIds = useMemo(() => {
@@ -1929,6 +2363,7 @@ const App: React.FC = () => {
     setViewingWorkoutId(null);
     setOriginalWorkout(null);
     setActiveWorkout(null);
+    setWorkoutStartTime(null);
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
@@ -1942,6 +2377,7 @@ const App: React.FC = () => {
   const handleStartWorkout = (item: WorkoutSelectionItem) => {
     if (item.workouts.length === 0) return;
     setActiveWorkout({ name: item.name, workouts: item.workouts });
+    setWorkoutStartTime(Date.now());
     setCompletedExercises(new Set());
     const trackingState: Record<string, ExerciseTrackingState> = {};
     item.workouts.forEach((workout) => {
@@ -2108,6 +2544,7 @@ const App: React.FC = () => {
     }
 
     const completedAt = Date.now();
+    const durationSeconds = workoutStartTime ? Math.max(0, Math.round((completedAt - workoutStartTime) / 1000)) : undefined;
 
     const exercises: ExerciseLog[] = activeWorkout.workouts.map((workout) => {
       return (
@@ -2120,6 +2557,7 @@ const App: React.FC = () => {
       id: `${completedAt}-${activeWorkout.name}`,
       workoutName: activeWorkout.name,
       completedAt,
+      durationSeconds,
       exercises,
     };
 
@@ -2138,6 +2576,7 @@ const App: React.FC = () => {
   const handleWorkoutCompletionDone = () => {
     setShowWorkoutCompletion(false);
     setActiveWorkout(null);
+    setWorkoutStartTime(null);
     setCompletedExercises(new Set());
     setTrackingByExercise({});
     setExerciseLogsById({});
@@ -2319,6 +2758,16 @@ const App: React.FC = () => {
     setAppMode('workout-history');
   };
 
+  const handleOpenCalendar = (date?: Date) => {
+    setCalendarSelectedDate(date);
+    setIsCalendarOpen(true);
+  };
+
+  const handleCloseCalendar = () => {
+    setIsCalendarOpen(false);
+    setCalendarSelectedDate(undefined);
+  };
+
   const isWorkoutSelected = (workoutId: string) => {
     return customWorkouts.some(w => w.id === workoutId);
   };
@@ -2459,15 +2908,86 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
         <Header onBack={handleBackToLanding} />
 
-        <main className="max-w-6xl mx-auto">
-          <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
-            <p className="text-gray-500 text-sm">Complete a workout to start tracking your progress.</p>
-          </div>
+        <main className="max-w-6xl mx-auto space-y-6">
+          {workoutLogs.length === 0 ? (
+            <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
+              <p className="text-gray-500 text-sm">Complete a workout to start tracking your progress.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
+                  <p className="text-sm text-gray-500">
+                    Showing {historyPeriod === 'day' ? 'daily' : historyPeriod === 'week' ? 'weekly' : 'monthly'} trends
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleOpenCalendar()}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs uppercase tracking-wider rounded-xl"
+                >
+                  Open Calendar
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <TimeSeriesChart
+                  title="Duration"
+                  yAxisLabel="Minutes"
+                  colorClassName="from-emerald-500 to-cyan-500"
+                  data={historyDurationData}
+                  onDoubleClick={() => handleOpenCalendar()}
+                  onPointSelect={(date) => handleOpenCalendar(date)}
+                />
+                <TimeSeriesChart
+                  title="Volume"
+                  yAxisLabel="Total volume"
+                  colorClassName="from-purple-500 to-blue-500"
+                  data={historyVolumeData}
+                  onDoubleClick={() => handleOpenCalendar()}
+                  onPointSelect={(date) => handleOpenCalendar(date)}
+                />
+                <TimeSeriesChart
+                  title="Reps"
+                  yAxisLabel="Total reps"
+                  colorClassName="from-pink-500 to-orange-500"
+                  data={historyRepsData}
+                  onDoubleClick={() => handleOpenCalendar()}
+                  onPointSelect={(date) => handleOpenCalendar(date)}
+                />
+              </div>
+
+              <PersonalBests pbs={historyPbs} />
+
+              <ActivityFeed
+                workoutLogs={workoutLogs}
+                onSelectLog={(log) => setSelectedWorkoutLog(log)}
+              />
+            </>
+          )}
         </main>
+
+        <CalendarView
+          isOpen={isCalendarOpen}
+          onClose={handleCloseCalendar}
+          workoutLogs={workoutLogs}
+          selectedDate={calendarSelectedDate}
+          onSelectLog={(log) => {
+            setSelectedWorkoutLog(log);
+            handleCloseCalendar();
+          }}
+        />
+
+        {selectedWorkoutLog && (
+          <WorkoutLogDetailModal
+            log={selectedWorkoutLog}
+            onClose={() => setSelectedWorkoutLog(null)}
+          />
+        )}
       </div>
     );
   }
