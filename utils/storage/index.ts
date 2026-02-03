@@ -51,63 +51,9 @@ async function createStorageAdapter(): Promise<StorageAdapter> {
         // Continue even if migration fails
       }
 
-      // CRITICAL: After migration, validate and clean any existing invalid data
-      // This ensures that even if invalid data was previously migrated, it gets cleaned up
-      try {
-        const existingLogs = await storage.loadWorkoutLogs();
-        if (existingLogs.length > 0) {
-          // Import validation function (same as in App.tsx)
-          const isValidLog = (log: import('../../types').WorkoutLog): boolean => {
-            if (!log || !log.id || !log.workoutName || !log.completedAt) return false;
-            if (typeof log.completedAt !== 'number' || log.completedAt <= 0) return false;
-            if (!log.exercises || !Array.isArray(log.exercises) || log.exercises.length === 0) return false;
-            
-            let totalReps = 0;
-            let hasValidExercise = false;
-            
-            for (const exercise of log.exercises) {
-              if (!exercise || !exercise.exerciseId || !exercise.exerciseName) continue;
-              if (!exercise.sets || !Array.isArray(exercise.sets) || exercise.sets.length === 0) continue;
-              
-              const exerciseHasValidSet = exercise.sets.some(set => 
-                set && typeof set.reps === 'number' && set.reps > 0 &&
-                typeof set.completedAt === 'number' && set.completedAt > 0
-              );
-              
-              if (exerciseHasValidSet) {
-                hasValidExercise = true;
-                exercise.sets.forEach(set => {
-                  if (set && typeof set.reps === 'number' && set.reps > 0) {
-                    totalReps += set.reps;
-                  }
-                });
-              }
-            }
-            
-            const hasDuration = log.durationSeconds && log.durationSeconds > 0;
-            const hasEnoughReps = totalReps >= 20;
-            const hasMinimumReps = totalReps >= 10;
-            
-            return hasValidExercise && hasMinimumReps && (hasDuration || hasEnoughReps);
-          };
-          
-          const invalidLogs = existingLogs.filter(log => !isValidLog(log));
-          if (invalidLogs.length > 0) {
-            console.log(`[Storage] Found ${invalidLogs.length} invalid logs during initialization. Cleaning up...`);
-            for (const invalidLog of invalidLogs) {
-              try {
-                await storage.deleteWorkoutLog(invalidLog.id);
-              } catch (error) {
-                console.error(`[Storage] Failed to delete invalid log during init:`, error);
-              }
-            }
-            console.log(`[Storage] Cleaned up ${invalidLogs.length} invalid workout logs during initialization.`);
-          }
-        }
-      } catch (error) {
-        console.warn('[Storage] Error during initialization cleanup:', error);
-        // Don't fail initialization if cleanup fails
-      }
+      // Note: Validation and cleanup of workout logs is handled by App.tsx on load.
+      // We don't perform cleanup here to avoid validation criteria mismatches.
+      // The App is the source of truth for what constitutes a valid workout log.
 
       return storage;
     } catch (error) {
