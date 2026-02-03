@@ -17,55 +17,9 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout } from './types';
+import { storage } from './utils/storage';
 
 type AppMode = 'landing' | 'view' | 'create' | 'saved' | 'view-saved' | 'workout-mode' | 'workout-active';
-
-const STORAGE_KEY = 'pulsefit-saved-workouts';
-
-// localStorage helper functions
-const loadSavedWorkouts = (): SavedWorkout[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored);
-  } catch (error) {
-    console.error('Error loading saved workouts:', error);
-    return [];
-  }
-};
-
-const saveWorkoutToStorage = (workout: SavedWorkout): void => {
-  try {
-    const saved = loadSavedWorkouts();
-    saved.push(workout);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  } catch (error) {
-    console.error('Error saving workout:', error);
-  }
-};
-
-const deleteWorkoutFromStorage = (workoutId: string): void => {
-  try {
-    const saved = loadSavedWorkouts();
-    const filtered = saved.filter(w => w.id !== workoutId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error('Error deleting workout:', error);
-  }
-};
-
-const updateSavedWorkout = (workoutId: string, updates: Partial<SavedWorkout>): void => {
-  try {
-    const saved = loadSavedWorkouts();
-    const index = saved.findIndex(w => w.id === workoutId);
-    if (index !== -1) {
-      saved[index] = { ...saved[index], ...updates };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    }
-  } catch (error) {
-    console.error('Error updating workout:', error);
-  }
-};
 
 // Constants
 const BADGE_INLINE_STYLES: React.CSSProperties = {
@@ -1648,37 +1602,46 @@ const App: React.FC = () => {
     return nameChanged || workoutsChanged;
   }, [editingWorkoutId, originalWorkout, workoutNameInput, customWorkouts]);
 
-  const handleSaveWorkoutConfirm = () => {
+  const handleSaveWorkoutConfirm = async () => {
     const name = workoutNameInput.trim();
     if (!name || name.length === 0 || name.length > 50) return;
     // Don't save if no changes were made
     if (editingWorkoutId && !hasChanges) return;
 
-    if (editingWorkoutId) {
-      // Update existing workout
-      updateSavedWorkout(editingWorkoutId, {
-        name,
-        workouts: [...customWorkouts]
-      });
-      // Update originalWorkout to the newly saved state so we can detect future changes
-      setOriginalWorkout({ workouts: [...customWorkouts], name });
-      // Keep editingWorkoutId set so subsequent saves continue to update the same workout
-    } else {
-      // Create new workout
-      const newWorkout: SavedWorkout = {
-        id: Date.now().toString(),
-        name,
-        workouts: [...customWorkouts],
-        createdAt: Date.now()
-      };
-      saveWorkoutToStorage(newWorkout);
+    try {
+      if (editingWorkoutId) {
+        // Update existing workout
+        await storage.updateWorkout(editingWorkoutId, {
+          name,
+          workouts: [...customWorkouts]
+        });
+        // Update originalWorkout to the newly saved state so we can detect future changes
+        setOriginalWorkout({ workouts: [...customWorkouts], name });
+        // Keep editingWorkoutId set so subsequent saves continue to update the same workout
+      } else {
+        // Create new workout
+        const newWorkout: SavedWorkout = {
+          id: Date.now().toString(),
+          name,
+          workouts: [...customWorkouts],
+          createdAt: Date.now()
+        };
+        await storage.saveWorkout(newWorkout);
+      }
+      
+      // Reload workouts from storage
+      const updatedWorkouts = await storage.loadWorkouts();
+      setSavedWorkouts(updatedWorkouts);
+      
+      closeSaveModal();
+      closeDrawer();
+      
+      // Show checkmark animation
+      setShowCheckmarkAnimation(true);
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      // Optionally show user-facing error message here
     }
-    setSavedWorkouts(loadSavedWorkouts());
-    closeSaveModal();
-    closeDrawer();
-    
-    // Show checkmark animation
-    setShowCheckmarkAnimation(true);
   };
 
   const handleCheckmarkAnimationComplete = () => {
@@ -1707,10 +1670,16 @@ const App: React.FC = () => {
     handleLoadSavedWorkout(workoutId);
   };
 
-  const handleDeleteSavedWorkout = (workoutId: string) => {
+  const handleDeleteSavedWorkout = async (workoutId: string) => {
     if (window.confirm('Delete this saved workout?')) {
-      deleteWorkoutFromStorage(workoutId);
-      setSavedWorkouts(loadSavedWorkouts());
+      try {
+        await storage.deleteWorkout(workoutId);
+        const updatedWorkouts = await storage.loadWorkouts();
+        setSavedWorkouts(updatedWorkouts);
+      } catch (error) {
+        console.error('Error deleting workout:', error);
+        // Optionally show user-facing error message here
+      }
     }
   };
 
@@ -1724,7 +1693,10 @@ const App: React.FC = () => {
 
   // Load saved workouts on mount
   useEffect(() => {
-    setSavedWorkouts(loadSavedWorkouts());
+    storage.loadWorkouts().then(setSavedWorkouts).catch((error) => {
+      console.error('Error loading saved workouts:', error);
+      setSavedWorkouts([]);
+    });
   }, []);
 
   if (appMode === 'landing') {

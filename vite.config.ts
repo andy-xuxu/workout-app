@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { copyFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
     // Use environment variable for base path, default to '/' for Vercel
     // Set VITE_BASE_PATH=/workout-app/ for GitHub Pages deployment
     const basePath = process.env.VITE_BASE_PATH || '/';
@@ -40,6 +40,13 @@ export default defineConfig(() => {
             main: resolve(__dirname, 'index.html')
           }
         }
+      },
+      test: {
+        globals: true,
+        environment: 'jsdom',
+        setupFiles: './test/setup.ts',
+        testTimeout: 15000,
+        hookTimeout: 15000,
       }
     };
 });
