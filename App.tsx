@@ -785,6 +785,8 @@ interface ExerciseCardProps {
   index: number;
   total: number;
   isCompleted: boolean;
+  isCurrentCard: boolean;
+  isJustCompleted: boolean;
   isAnimatingOut: boolean;
   onMarkComplete: () => void;
   trackingState: ExerciseTrackingState;
@@ -801,6 +803,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   index,
   total,
   isCompleted,
+  isCurrentCard,
+  isJustCompleted,
   isAnimatingOut,
   onMarkComplete,
   trackingState,
@@ -817,7 +821,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     <div className="w-full flex-shrink-0 flex items-center justify-center p-2 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
       <div
         className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col h-full max-h-full ${
-          isCompleted ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
+          isJustCompleted && isCurrentCard ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
         }`}
         style={{
           transform: isAnimatingOut
@@ -833,7 +837,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         {/* Category accent bar */}
         <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
 
-        {isCompleted && (
+        {isJustCompleted && isCurrentCard && (
           <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center backdrop-blur-[2px] transition-opacity duration-300 z-50 rounded-[1.5rem] md:rounded-[1.75rem]">
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/50 animate-pulse">
               <svg className="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -883,12 +887,12 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 </span>
               </div>
 
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 px-3 pb-2">
-                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold w-8">SET</span>
-                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold flex-1">LBS</span>
-                  <span className="text-[9px] md:text-xs text-gray-500 uppercase font-bold w-20">REPS</span>
-                  <div className="w-[34px]"></div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1">
+                  <span className="text-center">SET</span>
+                  <span className="text-center">LBS</span>
+                  <span className="text-center">REPS</span>
+                  <span></span>
                 </div>
                 {trackingState.sets.map((set, idx) => {
                   const isDefaultWeight = set.weight === '0' || set.weight === '';
@@ -896,16 +900,16 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                   return (
                     <div
                       key={set.id}
-                      className="flex items-center gap-2 bg-[#121212] border border-gray-800 rounded-lg px-3 py-2.5"
+                      className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-[#121212] border border-gray-800 rounded-lg px-2 py-2"
                     >
-                      <span className="text-[9px] md:text-xs text-gray-500 w-8">#{idx + 1}</span>
+                      <span className="text-sm md:text-base text-white font-bold text-center">{idx + 1}</span>
                       <input
                         type="number"
                         min={0}
                         inputMode="decimal"
                         value={set.weight}
                         onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
-                        className={`flex-1 px-2 py-1.5 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 ${
+                        className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield ${
                           isDefaultWeight ? 'text-gray-500' : 'text-white'
                         }`}
                         placeholder="0"
@@ -916,17 +920,17 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                         inputMode="numeric"
                         value={set.reps}
                         onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
-                        className={`w-20 px-2 py-1.5 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 ${
+                        className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield ${
                           isDefaultReps ? 'text-gray-500' : 'text-white'
                         }`}
-                        placeholder="10-12"
+                        placeholder="10"
                       />
                       <button
                         onClick={() => onRemoveSet(set.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
                         aria-label="Remove set"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
@@ -947,8 +951,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             <button
               onClick={onMarkComplete}
               className={`mt-4 md:mt-6 w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
-                isCompleted
+                isJustCompleted
                   ? 'bg-green-600 text-white cursor-default'
+                  : isCompleted
+                  ? 'bg-gray-500/50 text-gray-300 cursor-default'
                   : 'bg-white text-black hover:bg-gray-100 shadow-lg'
               }`}
             >
@@ -1010,6 +1016,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
+  const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
   const total = workouts.length;
@@ -1024,15 +1031,33 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
 
   const goNext = useCallback(() => {
     if (currentIndex < total - 1) {
+      // Clear just completed state when navigating away
+      const currentWorkoutId = workouts[currentIndex]?.id;
+      if (currentWorkoutId) {
+        setJustCompletedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(currentWorkoutId);
+          return next;
+        });
+      }
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, total]);
+  }, [currentIndex, total, workouts]);
 
   const goPrev = useCallback(() => {
     if (currentIndex > 0) {
+      // Clear just completed state when navigating away
+      const currentWorkoutId = workouts[currentIndex]?.id;
+      if (currentWorkoutId) {
+        setJustCompletedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(currentWorkoutId);
+          return next;
+        });
+      }
       setCurrentIndex((i) => i - 1);
     }
-  }, [currentIndex]);
+  }, [currentIndex, workouts]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1103,6 +1128,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
                   index={idx}
                   total={total}
                   isCompleted={completedExercises.has(workout.id)}
+                  isCurrentCard={isCurrentCard}
                   isAnimatingOut={isAnimatingOut}
                   trackingState={trackingByExercise[workout.id] || createDefaultTrackingState()}
                   onUpdateQuick={(field, value) => onUpdateQuick(workout.id, field, value)}
@@ -1112,14 +1138,20 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
                   onRemoveSet={(setId) => onRemoveSet(workout.id, setId)}
                   onMarkComplete={() => {
                     if (isCurrentCard && !isAnimatingOut) {
+                      const isAlreadyCompleted = completedExercises.has(workout.id);
                       setAnimatingOutId(workout.id);
-                      onMarkComplete(workout.id);
+                      // Only add to justCompletedIds if not already completed (to show green animation)
+                      if (!isAlreadyCompleted) {
+                        setJustCompletedIds((prev) => new Set(prev).add(workout.id));
+                        onMarkComplete(workout.id);
+                      }
                       setTimeout(() => {
                         setAnimatingOutId(null);
                         goNext();
                       }, 500);
                     }
                   }}
+                  isJustCompleted={justCompletedIds.has(workout.id)}
                   getCategoryStyles={getCategoryStyles}
                 />
               </div>
@@ -1134,7 +1166,18 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
           {Array.from({ length: total }).map((_, i) => (
             <button
               key={i}
-              onClick={() => setCurrentIndex(i)}
+              onClick={() => {
+                // Clear just completed state when navigating away
+                const currentWorkoutId = workouts[currentIndex]?.id;
+                if (currentWorkoutId) {
+                  setJustCompletedIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(currentWorkoutId);
+                    return next;
+                  });
+                }
+                setCurrentIndex(i);
+              }}
               className={`rounded-full transition-all duration-200 ${
                 i === currentIndex
                   ? 'w-6 h-2 bg-white'
