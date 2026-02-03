@@ -1180,11 +1180,7 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
   return (
     <div 
       ref={getTileRef ? getTileRef(workout.id) : undefined}
-      className={`group bg-[#111111] border rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] ${
-        isProminent 
-          ? 'scale-[1.02] border-gray-600 shadow-xl shadow-black/40 z-10' 
-          : 'border-gray-800 scale-100'
-      }`}
+      className="group bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 hover:border-gray-700 hover:shadow-2xl hover:shadow-black/60 cursor-pointer active:scale-[0.98] scale-100"
       style={{
         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease',
       }}
@@ -1195,9 +1191,7 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           <img 
             src={workout.gifUrl} 
             alt={workout.name}
-            className={`w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 ${
-              isProminent ? 'opacity-90' : 'opacity-60'
-            }`}
+            className="w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 opacity-60"
             loading="lazy"
           />
         ) : (
@@ -1209,9 +1203,7 @@ const WorkoutListCard: React.FC<WorkoutListCardProps> = ({
           tag={workout.tag}
           categoryStyles={styles}
         />
-        <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 select-none ${
-          isProminent ? 'text-white' : 'group-hover:text-white'
-        }`}>{workout.name}</h3>
+        <h3 className="text-xl font-bold mb-3 transition-colors duration-300 select-none group-hover:text-white">{workout.name}</h3>
         <p className="text-gray-400 text-sm mb-4 select-none">{workout.description}</p>
         <div className="flex flex-wrap gap-2 mt-1">
           {workout.targetMuscles.map(m => (
@@ -2550,8 +2542,8 @@ const App: React.FC = () => {
     return filteredWorkouts.map(w => w.id);
   }, [appMode, viewingWorkoutId, savedWorkouts, filteredWorkouts]);
 
-  // Prominent tile detection for mobile - enabled for all list screens
-  const shouldUseProminentTile = isMobile && (appMode === 'view' || appMode === 'create' || appMode === 'view-saved');
+  // Prominent tile detection disabled - no longer used
+  const shouldUseProminentTile = false;
   const { prominentTileId, getTileRef } = useProminentTile(tileIds, shouldUseProminentTile);
 
   const getCategoryStyles = (category: Category) => {
@@ -3694,7 +3686,7 @@ const App: React.FC = () => {
                 workout={workout}
                 onClick={setSelectedWorkout}
                 getCategoryStyles={getCategoryStyles}
-                isProminent={isMobile && prominentTileId === workout.id}
+                isProminent={false}
                 getTileRef={getTileRef}
                 showViewButton={false}
               />
@@ -3792,7 +3784,7 @@ const App: React.FC = () => {
                 workout={workout}
                 onClick={setSelectedWorkout}
                 getCategoryStyles={getCategoryStyles}
-                isProminent={isMobile && prominentTileId === workout.id}
+                isProminent={false}
                 getTileRef={getTileRef}
                 showViewButton={false}
               />
@@ -3803,16 +3795,13 @@ const App: React.FC = () => {
             {filteredWorkouts.map((workout) => {
               const styles = getCategoryStyles(workout.category);
               const isSelected = isWorkoutSelected(workout.id);
-              const isProminent = isMobile && prominentTileId === workout.id;
 
               return (
                 <div 
                   key={workout.id}
                   ref={getTileRef(workout.id)}
                   onClick={isCreateMode ? () => handleWorkoutToggle(workout) : () => handleOpenWorkoutDetailFromGrid(workout)}
-                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : isProminent ? 'border-2 border-gray-600' : styles.border} rounded-[2rem] overflow-hidden flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] ${
-                    isProminent ? 'scale-[1.03] shadow-xl shadow-black/50 z-10' : 'shadow-sm scale-100'
-                  }`}
+                  className={`group relative bg-[#111111] ${isSelected ? 'border-2 border-orange-500' : styles.border} rounded-[2rem] overflow-hidden flex flex-col ${isCreateMode || appMode === 'view' ? 'cursor-pointer active:scale-[0.98]' : 'active:scale-[0.98]'} hover:shadow-2xl hover:shadow-black/60 hover:-translate-y-1 hover:scale-[1.01] shadow-sm scale-100`}
                   style={{
                     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease',
                   }}
@@ -3829,9 +3818,7 @@ const App: React.FC = () => {
                       <img 
                         src={workout.gifUrl} 
                         alt={workout.name}
-                        className={`w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 ${
-                          isProminent ? 'opacity-90' : 'opacity-60'
-                        }`}
+                        className="w-full h-full object-cover group-hover:opacity-100 transition-opacity duration-300 opacity-60"
                         loading="lazy"
                       />
                       ) : (
@@ -3848,9 +3835,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col">
-                    <h3 className={`text-xl font-bold mb-4 transition-colors duration-300 text-center ${
-                      isProminent ? 'text-white' : 'group-hover:text-white'
-                    }`}>{workout.name}</h3>
+                    <h3 className="text-xl font-bold mb-4 transition-colors duration-300 text-center group-hover:text-white">{workout.name}</h3>
                     
                     <div className="mt-auto">
                       {isCreateMode ? (
