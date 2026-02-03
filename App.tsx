@@ -847,9 +847,28 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* Image area - flashcard front */}
-          <div className="relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(30vh, 200px)' }}>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative">
+          {/* Mobile preview - peeking from top */}
+          <div className="md:hidden absolute -top-12 left-1/2 -translate-x-1/2 z-20 w-32">
+            <div className={`relative bg-black/90 rounded-xl overflow-hidden border-2 border-gray-700 shadow-2xl ${styles.border}`} style={{ height: '100px' }}>
+              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${styles.gradient}`}></div>
+              <div className="absolute inset-0 flex items-center justify-center p-2 pt-3">
+                {workout.gifUrl ? (
+                  <img
+                    src={workout.gifUrl}
+                    alt={workout.name}
+                    className="max-w-full max-h-full object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <EmptyGifPlaceholder size="small" />
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Image area - flashcard front - hidden on mobile */}
+          <div className="hidden md:block relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(30vh, 200px)' }}>
             <div className="absolute inset-0 flex items-center justify-center p-2">
               {workout.gifUrl ? (
                 <img
@@ -865,7 +884,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </div>
 
           {/* Content area - flashcard back */}
-          <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="pt-16 md:pt-4 px-4 pb-4 md:p-6 flex flex-col gap-3 md:gap-5 flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div>
               <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-2 md:mb-3`}>
                 {workout.tag}
