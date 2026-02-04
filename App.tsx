@@ -1823,6 +1823,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
             }}
           >
             <div
