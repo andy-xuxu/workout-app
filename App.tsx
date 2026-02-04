@@ -22,7 +22,6 @@ import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod, AggregatedMetr
 
 type AppMode =
   | 'landing'
-  | 'workout-selection'
   | 'view'
   | 'create'
   | 'saved'
@@ -31,6 +30,8 @@ type AppMode =
   | 'workout-active'
   | 'workout-history'
   | 'profile';
+
+type TabType = 'train' | 'progress';
 
 type TrackingMode = 'quick' | 'detailed';
 
@@ -954,6 +955,47 @@ const Header: React.FC<HeaderProps> = ({ onBack, subtitle }) => {
   );
 };
 
+// Bottom Tab Bar Component
+interface BottomTabBarProps {
+  currentTab: TabType;
+  onTabChange: (tab: TabType) => void;
+}
+
+const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentTab, onTabChange }) => {
+  return (
+    <div 
+      className="fixed bottom-0 left-0 right-0 bg-[#0d0d0d] border-t border-gray-800 z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="flex items-center justify-around max-w-md mx-auto">
+        <button
+          onClick={() => onTabChange('train')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 transition-all duration-200 ${
+            currentTab === 'train' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-xs font-bold uppercase tracking-wider">Train</span>
+        </button>
+        <button
+          onClick={() => onTabChange('progress')}
+          className={`flex-1 flex flex-col items-center justify-center py-3 transition-all duration-200 ${
+            currentTab === 'progress' ? 'text-emerald-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span className="text-xs font-bold uppercase tracking-wider">Progress</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Save Workout Bottom Sheet Component (Mobile)
 interface SaveWorkoutBottomSheetProps {
   isOpen: boolean;
@@ -1351,11 +1393,11 @@ const WorkoutModeSelection: React.FC<WorkoutModeSelectionProps> = ({
   getCategoryStyles,
 }) => {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pb-24 md:p-12 selection:bg-blue-500/30">
       <Header onBack={onBack} subtitle="Choose a routine to follow" />
 
       <main className="max-w-4xl mx-auto">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Predefined Workouts</h2>
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Default Workouts</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           {predefinedWorkouts.map((workout) => {
             const styles = getCategoryStyles(workout.category);
@@ -1388,7 +1430,7 @@ const WorkoutModeSelection: React.FC<WorkoutModeSelectionProps> = ({
 
         {savedWorkouts.length > 0 && (
           <>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Custom Routines</h2>
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Your Routines</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {savedWorkouts.map((workout) => (
                 <button
@@ -1422,6 +1464,278 @@ const WorkoutModeSelection: React.FC<WorkoutModeSelectionProps> = ({
           <p className="text-gray-600 text-sm text-center py-8">Create custom routines in the workout builder to see them here.</p>
         )}
       </main>
+    </div>
+  );
+};
+
+// Train Landing Page Component
+interface TrainLandingPageProps {
+  lastWorkout: WorkoutSelectionItem | null;
+  onStartWorkout: () => void;
+  onRepeatLastWorkout: () => void;
+  onCreateWorkout: () => void;
+  onManageWorkouts: () => void;
+}
+
+const TrainLandingPage: React.FC<TrainLandingPageProps> = ({
+  lastWorkout,
+  onStartWorkout,
+  onRepeatLastWorkout,
+  onCreateWorkout,
+  onManageWorkouts,
+}) => {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pb-24 selection:bg-blue-500/30">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8 mt-8">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent mb-3">
+            Begin workout
+          </h1>
+          <p className="text-gray-500 text-base">Pick a session and begin.</p>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          {/* Primary Action: Start Workout */}
+          <button
+            onClick={onStartWorkout}
+            className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-bold py-6 px-8 rounded-3xl shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-xl">Start Workout</span>
+          </button>
+
+          {/* Repeat Last Workout Button */}
+          {lastWorkout && (
+            <button
+              onClick={onRepeatLastWorkout}
+              className="w-full bg-[#111111] border-2 border-emerald-500/50 hover:border-emerald-500 text-white font-bold py-5 px-8 rounded-3xl shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <div className="text-left">
+                    <div className="text-sm text-gray-400 uppercase tracking-wider">Repeat Latest</div>
+                    <div className="text-base font-bold">{lastWorkout.name}</div>
+                  </div>
+                </div>
+                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={onCreateWorkout}
+            className="bg-[#111111] border border-gray-800 hover:border-orange-500/50 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] flex flex-col items-center gap-2"
+          >
+            <svg className="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-sm">Create Workout</span>
+          </button>
+          <button
+            onClick={onManageWorkouts}
+            className="bg-[#111111] border border-gray-800 hover:border-purple-500/50 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] flex flex-col items-center gap-2"
+          >
+            <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            <span className="text-sm">My Workouts</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Progress Page Component
+interface ProgressPageProps {
+  workoutLogs: WorkoutLog[];
+  historyViewMode: 'calendar' | 'last7days';
+  setHistoryViewMode: (mode: 'calendar' | 'last7days') => void;
+  selectedHistoryMetric: 'volume' | 'reps';
+  setSelectedHistoryMetric: (metric: 'volume' | 'reps') => void;
+  historyVolumeData: TimeSeriesPoint[];
+  historyRepsData: TimeSeriesPoint[];
+  historyPeriod: 'day' | 'week' | 'month';
+  calendarSelectedDate: Date | undefined;
+  setCalendarSelectedDate: (date: Date | undefined) => void;
+  selectedWorkoutLog: WorkoutLog | null;
+  setSelectedWorkoutLog: (log: WorkoutLog | null) => void;
+  onClearAllWorkoutLogs: () => void;
+}
+
+const ProgressPage: React.FC<ProgressPageProps> = ({
+  workoutLogs,
+  historyViewMode,
+  setHistoryViewMode,
+  selectedHistoryMetric,
+  setSelectedHistoryMetric,
+  historyVolumeData,
+  historyRepsData,
+  historyPeriod,
+  calendarSelectedDate,
+  setCalendarSelectedDate,
+  selectedWorkoutLog,
+  setSelectedWorkoutLog,
+  onClearAllWorkoutLogs,
+}) => {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pb-24 selection:bg-blue-500/30">
+      <div className="max-w-6xl mx-auto pt-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent mb-3">
+            Progress
+          </h1>
+          <p className="text-gray-500 text-base">Track your fitness journey</p>
+        </div>
+
+        <main className="space-y-6">
+          {workoutLogs.length === 0 ? (
+            <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
+              <p className="text-gray-500 text-sm mb-6">Complete a workout to start tracking your progress.</p>
+            </div>
+          ) : (
+            <>
+              {/* Navigation Tabs */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setHistoryViewMode('last7days')}
+                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
+                    historyViewMode === 'last7days'
+                      ? 'bg-white text-black shadow-lg shadow-white/20'
+                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                  }`}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  onClick={() => setHistoryViewMode('calendar')}
+                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
+                    historyViewMode === 'calendar'
+                      ? 'bg-white text-black shadow-lg shadow-white/20'
+                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                  }`}
+                >
+                  Calendar
+                </button>
+              </div>
+
+              {/* Last 7 Days View */}
+              {historyViewMode === 'last7days' && (
+                <>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div>
+                      <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
+                      <p className="text-sm text-gray-500">Last 7 days</p>
+                    </div>
+                    <button
+                      onClick={onClearAllWorkoutLogs}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                    >
+                      Clear Data
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <TimeSeriesChart
+                      title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
+                      yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
+                      colorClassName="from-emerald-500 to-emerald-400"
+                      metric={selectedHistoryMetric}
+                      data={
+                        selectedHistoryMetric === 'volume'
+                          ? historyVolumeData
+                          : historyRepsData
+                      }
+                      onPointSelect={(date) => {
+                        setHistoryViewMode('calendar');
+                        setCalendarSelectedDate(date);
+                      }}
+                      width={800}
+                      height={400}
+                      period={historyPeriod}
+                    />
+                    
+                    <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
+                      <button
+                        onClick={() => setSelectedHistoryMetric('volume')}
+                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                          selectedHistoryMetric === 'volume'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                        }`}
+                      >
+                        Volume
+                      </button>
+                      <button
+                        onClick={() => setSelectedHistoryMetric('reps')}
+                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
+                          selectedHistoryMetric === 'reps'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
+                        }`}
+                      >
+                        Reps
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Calendar View */}
+              {historyViewMode === 'calendar' && (
+                <>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6">
+                    <div>
+                      <h2 className="text-2xl md:text-3xl font-bold">Calendar</h2>
+                      <p className="text-sm text-gray-500">View workouts by date</p>
+                    </div>
+                    <button
+                      onClick={onClearAllWorkoutLogs}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                    >
+                      Clear Data
+                    </button>
+                  </div>
+                  <div className="bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden">
+                    <CalendarView
+                      isOpen={true}
+                      onClose={() => {}}
+                      workoutLogs={workoutLogs}
+                      selectedDate={calendarSelectedDate}
+                      onSelectLog={(log) => {
+                        setSelectedWorkoutLog(log);
+                      }}
+                      inline={true}
+                    />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </main>
+
+        {selectedWorkoutLog && (
+          <WorkoutLogDetailModal
+            log={selectedWorkoutLog}
+            onClose={() => setSelectedWorkoutLog(null)}
+          />
+        )}
+      </div>
     </div>
   );
 };
@@ -1463,13 +1777,27 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   getCategoryStyles,
 }) => {
   const styles = getCategoryStyles(workout.category);
-  const [isGifExpanded, setIsGifExpanded] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleFlip = (e: React.MouseEvent) => {
+    // Prevent flipping when clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('button') ||
+      target.closest('input')
+    ) {
+      return;
+    }
+    setIsFlipped(!isFlipped);
+  };
 
   return (
     <div className="w-full flex-shrink-0 flex items-center justify-center p-0 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
       <div
-        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border shadow-2xl transition-all duration-500 ease-in flex flex-col h-full max-h-full ${
-          isJustCompleted && isCurrentCard ? 'border-green-500/40 ring-2 ring-green-500/30' : 'border-gray-800/80'
+        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] shadow-2xl transition-all duration-500 ease-in ${
+          isJustCompleted && isCurrentCard ? 'ring-2 ring-green-500/30' : ''
         }`}
         style={{
           transform: isAnimatingOut
@@ -1477,107 +1805,81 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             : 'scale(1) rotateY(0deg) translateZ(0px) translateY(0px)',
           opacity: isAnimatingOut ? 0 : 1,
           transformStyle: 'preserve-3d',
-          transformOrigin: 'center center',
           filter: isAnimatingOut ? 'blur(4px)' : 'blur(0px)',
           zIndex: isAnimatingOut ? 0 : 1,
         }}
       >
-        {/* Category accent bar */}
-        <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
-
-        {isJustCompleted && isCurrentCard && (
-          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center backdrop-blur-[2px] transition-opacity duration-300 z-50 rounded-[1.5rem] md:rounded-[1.75rem]">
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/50 animate-pulse">
-              <svg className="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative">
-          {/* Mobile GIF preview - peek bar */}
-          <div className="md:hidden flex-shrink-0">
-            <button
-              onClick={() => setIsGifExpanded(true)}
-              className="w-full relative overflow-hidden h-11"
-            >
-              {/* Animated gradient background */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${styles.gradient} opacity-20`}></div>
-              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
-              {/* Shimmer effect */}
-              <div className="absolute inset-0 overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                  style={{ animation: 'shimmer 2s infinite linear' }}
-                ></div>
-              </div>
-              
-              {/* "Tap to view" label */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span className="text-white/90 text-xs font-semibold uppercase tracking-wider">Tap to view</span>
-                </div>
-              </div>
-              
-              {/* Bottom border accent */}
-              <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${styles.gradient}`}></div>
-            </button>
-          </div>
-
-          {/* Full-screen GIF overlay - mobile only */}
-          {isGifExpanded && (
-            <div 
-              className="md:hidden fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-md"
-              onClick={() => setIsGifExpanded(false)}
-            >
-              {/* GIF container */}
-              <div className="flex-1 flex items-center justify-center p-4">
-                {workout.gifUrl ? (
-                  <img
-                    src={workout.gifUrl}
-                    alt={workout.name}
-                    className="max-h-full max-w-full object-contain"
-                    style={{ animation: 'gifExpand 0.3s ease-out forwards' }}
-                    loading="lazy"
-                  />
-                ) : (
-                  <EmptyGifPlaceholder size="large" />
-                )}
-              </div>
-              
-              {/* Close hint */}
-              <div className="pb-8 text-center">
-                <span className="text-white/50 text-xs uppercase tracking-wider">tap anywhere to close</span>
-              </div>
-            </div>
-          )}
-          
-          {/* Image area - flashcard front - desktop only */}
-          <div className="hidden md:block relative bg-black/60 flex-shrink-0 w-full" style={{ paddingBottom: 'min(30vh, 200px)' }}>
-            <div className="absolute inset-0 flex items-center justify-center p-2">
-              {workout.gifUrl ? (
-                <img
-                  src={workout.gifUrl}
-                  alt={workout.name}
-                  className="max-w-full max-h-full object-contain"
-                  loading="lazy"
-                />
-              ) : (
-                <EmptyGifPlaceholder size="large" />
-              )}
-            </div>
-          </div>
-
-          {/* Content area - flashcard back */}
-          <div 
-            className={`p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-y-auto transition-transform duration-300 ease-out ${isGifExpanded ? 'md:translate-y-0 translate-y-[100vh]' : 'translate-y-0'}`}
-            style={{ WebkitOverflowScrolling: 'touch' }}
+        <div
+          className="relative w-full h-full"
+          style={{
+            transformStyle: 'preserve-3d',
+            transition: 'transform 0.6s',
+            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
+        >
+          {/* Front of card - Exercise details */}
+          <div
+            className="w-full h-full relative"
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+            }}
           >
+            <div
+              className={`w-full h-full rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border flex flex-col relative ${
+                isJustCompleted && isCurrentCard ? 'border-green-500/40' : 'border-gray-800/80'
+              }`}
+            >
+              {/* Category accent bar */}
+              <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
+
+              {isJustCompleted && isCurrentCard && (
+                <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center backdrop-blur-[2px] transition-opacity duration-300 z-50 rounded-[1.5rem] md:rounded-[1.75rem]">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/50 animate-pulse">
+                    <svg className="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative" onClick={handleFlip}>
+                {/* Tap to view bar */}
+                <div className="flex-shrink-0 cursor-pointer">
+                  <div className="w-full relative overflow-hidden h-11">
+                    {/* Animated gradient background */}
+                    <div className={`absolute inset-0 bg-gradient-to-r ${styles.gradient} opacity-20`}></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+                        style={{ animation: 'shimmer 2s infinite linear' }}
+                      ></div>
+                    </div>
+                    
+                    {/* "Tap to view" label */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="text-white/90 text-xs font-semibold uppercase tracking-wider">Tap to view</span>
+                      </div>
+                    </div>
+                    
+                    {/* Bottom border accent */}
+                    <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${styles.gradient}`}></div>
+                  </div>
+                </div>
+
+                {/* Content area - flashcard back */}
+                <div 
+                  className="p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-y-auto"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
             <div>
               <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-1.5 md:mb-3`}>
                 {workout.tag}
@@ -1676,27 +1978,69 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 Add Set
               </button>
             </div>
-            <button
-              onClick={onMarkComplete}
-              className={`mt-4 md:mt-6 w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
-                isJustCompleted
-                  ? 'bg-green-600 text-white cursor-default'
-                  : isCompleted
-                  ? 'bg-gray-500/50 text-gray-300 cursor-default'
-                  : 'bg-white text-black hover:bg-gray-100 shadow-lg'
+                  <button
+                    onClick={onMarkComplete}
+                    className={`mt-4 md:mt-6 w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
+                      isJustCompleted
+                        ? 'bg-green-600 text-white cursor-default'
+                        : isCompleted
+                        ? 'bg-gray-500/50 text-gray-300 cursor-default'
+                        : 'bg-white text-black hover:bg-gray-100 shadow-lg'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Done
+                      </span>
+                    ) : (
+                      'Mark Complete'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Back of card - GIF view */}
+          <div
+            className="absolute inset-0 w-full"
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+            }}
+          >
+            <div
+              className={`w-full h-full rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border flex flex-col ${
+                isJustCompleted && isCurrentCard ? 'border-green-500/40' : 'border-gray-800/80'
               }`}
+              onClick={handleFlip}
             >
-              {isCompleted ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Done
-                </span>
-              ) : (
-                'Mark Complete'
-              )}
-            </button>
+              {/* Category accent bar */}
+              <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
+
+              {/* GIF display */}
+              <div className="flex-1 flex flex-col items-center justify-center p-4 bg-black/80 relative cursor-pointer">
+                {workout.gifUrl ? (
+                  <img
+                    src={workout.gifUrl}
+                    alt={workout.name}
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                    loading="lazy"
+                  />
+                ) : (
+                  <EmptyGifPlaceholder size="large" />
+                )}
+                
+                {/* Tap to close hint */}
+                <div className="absolute bottom-6 left-0 right-0 text-center">
+                  <span className="text-white/50 text-xs uppercase tracking-wider">tap anywhere to close</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2496,6 +2840,8 @@ const SortableWorkoutCard: React.FC<SortableWorkoutCardProps> = ({
 
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('landing');
+  const [currentTab, setCurrentTab] = useState<TabType>('train');
+  const [lastWorkout, setLastWorkout] = useState<WorkoutSelectionItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [customWorkouts, setCustomWorkouts] = useState<Workout[]>([]);
@@ -2683,6 +3029,7 @@ const App: React.FC = () => {
 
   const handleBackToLanding = () => {
     setAppMode('landing');
+    setCurrentTab('train');
     setSelectedWorkout(null);
     setCustomWorkouts([]);
     setEditingWorkoutId(null);
@@ -2701,7 +3048,9 @@ const App: React.FC = () => {
   };
 
   const handleBackToWorkoutSelection = () => {
-    setAppMode('workout-selection');
+    // Navigate back to Train landing page
+    setAppMode('landing');
+    setCurrentTab('train');
     setSelectedWorkout(null);
     setCustomWorkouts([]);
     setEditingWorkoutId(null);
@@ -2913,7 +3262,8 @@ const App: React.FC = () => {
   const handleBackFromWorkoutActive = () => {
     const hasProgress = completedExercises.size > 0;
     if (hasProgress && !window.confirm('Leave workout? Your progress will not be saved.')) return;
-    setAppMode('workout-selection');
+    setAppMode('landing');
+    setCurrentTab('train');
     setActiveWorkout(null);
     setCompletedExercises(new Set());
     setTrackingByExercise({});
@@ -3024,6 +3374,20 @@ const App: React.FC = () => {
       setWorkoutLogs(validLogs);
       console.log(`[Workout History] Total workout logs after save: ${validLogs.length}`);
       
+      // Save last workout for quick repeat
+      const lastWorkoutItem: WorkoutSelectionItem = {
+        id: activeWorkout.name,
+        name: activeWorkout.name,
+        workouts: activeWorkout.workouts,
+      };
+      setLastWorkout(lastWorkoutItem);
+      try {
+        localStorage.setItem('lastWorkout', JSON.stringify(lastWorkoutItem));
+        console.log('[Last Workout] Saved last workout for quick repeat');
+      } catch (error) {
+        console.error('[Last Workout] Error saving last workout:', error);
+      }
+      
       setIsWorkoutSaved(true);
       // Update completedWorkoutLog to reflect the saved version
       setCompletedWorkoutLog(workoutLogToSave);
@@ -3034,16 +3398,29 @@ const App: React.FC = () => {
   };
 
   const handleWorkoutCompletionDone = () => {
-    // Navigate back to workout selection page
-    setShowWorkoutCompletion(false);
-    setActiveWorkout(null);
-    setCompletedExercises(new Set());
-    setTrackingByExercise({});
-    setExerciseLogsById({});
-    setCompletedWorkoutLog(null);
-    setIsWorkoutSaved(false);
-    setAppMode('workout-selection');
-    closeDrawer();
+    // If workout is saved, go back to landing page
+    // Otherwise, just hide completion screen to allow review
+    if (isWorkoutSaved) {
+      // Navigate back to train tab
+      setShowWorkoutCompletion(false);
+      setActiveWorkout(null);
+      setCompletedExercises(new Set());
+      setTrackingByExercise({});
+      setExerciseLogsById({});
+      setCompletedWorkoutLog(null);
+      setIsWorkoutSaved(false);
+      setAppMode('landing');
+      setCurrentTab('train');
+      closeDrawer();
+    } else {
+      // Just hide completion screen - keep workout active for review
+      setShowWorkoutCompletion(false);
+    }
+  };
+
+  const handleRepeatLastWorkout = () => {
+    if (!lastWorkout) return;
+    handleStartWorkout(lastWorkout);
   };
 
   const handleClearCustomWorkout = () => {
@@ -3176,8 +3553,13 @@ const App: React.FC = () => {
 
   const handleCheckmarkAnimationComplete = () => {
     setShowCheckmarkAnimation(false);
-    // Navigate back to workout selection page
-    handleBackToWorkoutSelection();
+    // Navigate back to Train landing page
+    setAppMode('landing');
+    setCurrentTab('train');
+    setCustomWorkouts([]);
+    setEditingWorkoutId(null);
+    setOriginalWorkout(null);
+    setSelectedTag(null);
   };
 
   const handleLoadSavedWorkout = (workoutId: string) => {
@@ -3219,7 +3601,8 @@ const App: React.FC = () => {
 
   const handleViewWorkoutHistory = () => {
     setSelectedWorkoutLog(null);
-    setAppMode('workout-history');
+    setCurrentTab('progress');
+    setAppMode('landing');
   };
 
   const handleClearAllWorkoutLogs = async () => {
@@ -3279,6 +3662,28 @@ const App: React.FC = () => {
     };
     
     loadSavedWorkouts();
+  }, []);
+
+  // Load last workout on mount for quick repeat feature
+  useEffect(() => {
+    const loadLastWorkout = () => {
+      try {
+        console.log('[Last Workout] Loading last workout from storage...');
+        const lastWorkoutData = localStorage.getItem('lastWorkout');
+        if (lastWorkoutData) {
+          const parsed = JSON.parse(lastWorkoutData) as WorkoutSelectionItem;
+          setLastWorkout(parsed);
+          console.log('[Last Workout] Loaded last workout:', parsed.name);
+        } else {
+          console.log('[Last Workout] No last workout found');
+        }
+      } catch (error) {
+        console.error('[Last Workout] Error loading last workout:', error);
+        setLastWorkout(null);
+      }
+    };
+    
+    loadLastWorkout();
   }, []);
 
   useEffect(() => {
@@ -3359,123 +3764,59 @@ const App: React.FC = () => {
   }, []);
 
   const handleViewWorkoutSelection = () => {
-    setAppMode('workout-selection');
+    // Navigate to Train landing page
+    setAppMode('landing');
+    setCurrentTab('train');
   };
 
   const handleViewProfile = () => {
     setAppMode('profile');
   };
 
+  // Tab-based navigation for main app modes
   if (appMode === 'landing') {
+    const showTabBar = !showWorkoutCompletion;
+    
     return (
-      <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
-        <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent mb-12">
-            PulseFit Pro
-          </h1>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <button
-              onClick={handleViewWorkoutSelection}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-12 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
-            >
-              <div className="w-full flex flex-col items-center">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/50">
-                  <svg className="w-10 h-10 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-blue-400">Workout</h2>
-                <p className="text-gray-500 text-base text-center transition-colors duration-300 group-hover:text-gray-400">Train and track progress</p>
-              </div>
-            </button>
-            
-            <button
-              onClick={handleViewWorkoutHistory}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 md:px-10 md:py-12 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] min-w-0 w-full flex flex-col items-center justify-center"
-            >
-              <div className="w-full flex flex-col items-center">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald-500/50">
-                  <svg className="w-10 h-10 text-white transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-emerald-400">History</h2>
-                <p className="text-gray-500 text-base text-center transition-colors duration-300 group-hover:text-gray-400">View past sessions</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
+      <>
+        {currentTab === 'train' && (
+          <TrainLandingPage
+            lastWorkout={lastWorkout}
+            onStartWorkout={() => setAppMode('workout-mode')}
+            onRepeatLastWorkout={handleRepeatLastWorkout}
+            onCreateWorkout={handleCreateNewWorkout}
+            onManageWorkouts={handleViewSavedWorkouts}
+          />
+        )}
+        
+        {currentTab === 'progress' && (
+          <ProgressPage
+            workoutLogs={workoutLogs}
+            historyViewMode={historyViewMode}
+            setHistoryViewMode={setHistoryViewMode}
+            selectedHistoryMetric={selectedHistoryMetric}
+            setSelectedHistoryMetric={setSelectedHistoryMetric}
+            historyVolumeData={historyVolumeData}
+            historyRepsData={historyRepsData}
+            historyPeriod={historyPeriod}
+            calendarSelectedDate={calendarSelectedDate}
+            setCalendarSelectedDate={setCalendarSelectedDate}
+            selectedWorkoutLog={selectedWorkoutLog}
+            setSelectedWorkoutLog={setSelectedWorkoutLog}
+            onClearAllWorkoutLogs={handleClearAllWorkoutLogs}
+          />
+        )}
+        
+        {showTabBar && (
+          <BottomTabBar
+            currentTab={currentTab}
+            onTabChange={setCurrentTab}
+          />
+        )}
+      </>
     );
   }
 
-  if (appMode === 'workout-selection') {
-    return (
-      <div className="h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 selection:bg-blue-500/30 overflow-y-auto">
-        <div className="max-w-4xl w-full text-center">
-          <div className="flex items-center justify-between mb-12">
-            <button 
-              onClick={handleBackToLanding}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
-            >
-              <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="font-bold uppercase tracking-wider text-sm">Back</span>
-            </button>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">
-              Workout
-            </h1>
-            <div className="w-20" /> {/* Spacer for centering */}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <button
-              onClick={handleViewWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-blue-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
-            >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold mb-2">Begin Workout</h2>
-              <p className="text-gray-500 text-sm">Start a training session</p>
-            </button>
-            
-            <button
-              onClick={handleCreateNewWorkout}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-orange-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
-            >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold mb-2">Create Workout</h2>
-              <p className="text-gray-500 text-sm">Build a custom routine</p>
-            </button>
-
-            <button
-              onClick={handleViewSavedWorkouts}
-              className="group relative bg-[#111111] border border-gray-800 rounded-3xl p-8 hover:border-purple-500/50 active:scale-[0.98] flex flex-col items-center justify-center"
-            >
-              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold mb-2">View Workouts</h2>
-              <p className="text-gray-500 text-sm">Access your library</p>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (appMode === 'profile') {
     return (
@@ -3551,7 +3892,10 @@ const App: React.FC = () => {
         predefinedWorkouts={PREDEFINED_WORKOUTS}
         savedWorkouts={savedWorkouts}
         onSelectWorkout={handleStartWorkout}
-        onBack={handleBackToWorkoutSelection}
+        onBack={() => {
+          setAppMode('landing');
+          setCurrentTab('train');
+        }}
         getCategoryStyles={getCategoryStyles}
       />
     );
@@ -3590,151 +3934,7 @@ const App: React.FC = () => {
   }
 
   // Note: 'create', 'saved', and 'view-saved' modes are handled in the fallback return statement below
-
-  if (appMode === 'workout-history') {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-12 selection:bg-blue-500/30">
-        <Header onBack={handleBackToProfile} />
-
-        <main className="max-w-6xl mx-auto space-y-6">
-          {workoutLogs.length === 0 ? (
-            <div className="text-center py-16 bg-[#111111] border border-gray-800 rounded-2xl">
-              <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-gray-400 text-lg mb-2">No workout history yet</p>
-              <p className="text-gray-500 text-sm mb-6">Complete a workout to start tracking your progress.</p>
-            </div>
-          ) : (
-            <>
-              {/* Navigation Tabs */}
-              <div className="flex gap-3 mb-6">
-                <button
-                  onClick={() => setHistoryViewMode('last7days')}
-                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
-                    historyViewMode === 'last7days'
-                      ? 'bg-white text-black shadow-lg shadow-white/20'
-                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                  }`}
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  onClick={() => setHistoryViewMode('calendar')}
-                  className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
-                    historyViewMode === 'calendar'
-                      ? 'bg-white text-black shadow-lg shadow-white/20'
-                      : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                  }`}
-                >
-                  Calendar
-                </button>
-              </div>
-
-              {/* Last 7 Days View */}
-              {historyViewMode === 'last7days' && (
-                <>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
-                      <p className="text-sm text-gray-500">Last 7 days</p>
-                    </div>
-                    <button
-                      onClick={handleClearAllWorkoutLogs}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
-                    >
-                      Clear Data
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <TimeSeriesChart
-                      title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
-                      yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
-                      colorClassName="from-emerald-500 to-emerald-400"
-                      metric={selectedHistoryMetric}
-                      data={
-                        selectedHistoryMetric === 'volume'
-                          ? historyVolumeData
-                          : historyRepsData
-                      }
-                      onPointSelect={(date) => {
-                        setHistoryViewMode('calendar');
-                        setCalendarSelectedDate(date);
-                      }}
-                      width={800}
-                      height={400}
-                      period={historyPeriod}
-                    />
-                    
-                    <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
-                      <button
-                        onClick={() => setSelectedHistoryMetric('volume')}
-                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                          selectedHistoryMetric === 'volume'
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                        }`}
-                      >
-                        Volume
-                      </button>
-                      <button
-                        onClick={() => setSelectedHistoryMetric('reps')}
-                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                          selectedHistoryMetric === 'reps'
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                        }`}
-                      >
-                        Reps
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Calendar View */}
-              {historyViewMode === 'calendar' && (
-                <>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-bold">Calendar</h2>
-                      <p className="text-sm text-gray-500">View workouts by date</p>
-                    </div>
-                    <button
-                      onClick={handleClearAllWorkoutLogs}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
-                    >
-                      Clear Data
-                    </button>
-                  </div>
-                  <div className="bg-[#111111] border border-gray-800 rounded-2xl overflow-hidden">
-                    <CalendarView
-                      isOpen={true}
-                      onClose={() => {}}
-                      workoutLogs={workoutLogs}
-                      selectedDate={calendarSelectedDate}
-                      onSelectLog={(log) => {
-                        setSelectedWorkoutLog(log);
-                      }}
-                      inline={true}
-                    />
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </main>
-
-        {selectedWorkoutLog && (
-          <WorkoutLogDetailModal
-            log={selectedWorkoutLog}
-            onClose={() => setSelectedWorkoutLog(null)}
-          />
-        )}
-      </div>
-    );
-  }
+  // Note: 'workout-history' mode has been replaced with tab-based Progress page
 
   if (appMode === 'saved') {
     return (
