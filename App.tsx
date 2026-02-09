@@ -1907,15 +1907,19 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Top fade gradient */}
                 <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
                 
-                {/* Scrollable area - touch-action and overscroll for iOS scroll */}
+                {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll */}
                 <div 
                   data-scrollable-panel="true"
-                  className="max-h-[200px] md:max-h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1"
+                  className="h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     touchAction: 'pan-y',
                     overscrollBehaviorY: 'contain',
                   }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  onTouchCancel={(e) => e.stopPropagation()}
                 >
                   <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
                     <span className="text-center">SET</span>
