@@ -1895,22 +1895,22 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 </span>
               ))}
             </div>
-            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4">
-              <div className="mb-4">
+            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4 min-h-0 flex flex-col">
+              <div className="mb-4 flex-shrink-0">
                 <span className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-bold">
                   Track Sets
                 </span>
               </div>
 
               {/* Scrollable sets grid container */}
-              <div className="relative">
+              <div className="relative min-h-0 flex flex-col">
                 {/* Top fade gradient */}
                 <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
                 
-                {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll */}
+                {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll; min-h-0 + isolate so nested scroll works */}
                 <div 
                   data-scrollable-panel="true"
-                  className="h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain"
+                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-scroll overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1] isolate"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     touchAction: 'pan-y',
