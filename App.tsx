@@ -1878,7 +1878,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Content area - flashcard back */}
                 <div 
                   className="p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-y-auto"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
+                  style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    overscrollBehaviorY: 'contain'
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
             <div>
@@ -1910,16 +1913,25 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll; min-h-0 + isolate so nested scroll works */}
                 <div 
                   data-scrollable-panel="true"
-                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-scroll overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1] isolate"
+                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1] isolate"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     touchAction: 'pan-y',
                     overscrollBehaviorY: 'contain',
+                    isolation: 'isolate'
                   }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchMove={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                  onTouchCancel={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchMove={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchCancel={(e) => {
+                    e.stopPropagation();
+                  }}
                 >
                   <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
                     <span className="text-center">SET</span>
@@ -2159,12 +2171,16 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
     if (touchInScrollPanel) return;
 
     const deltaX = e.touches[0].clientX - touchStart.x;
-    const deltaY = Math.abs(e.touches[0].clientY - touchStart.y);
+    const deltaY = e.touches[0].clientY - touchStart.y;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
 
     const target = e.target as HTMLElement;
     const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
 
-    if (scrollableElement && deltaY > Math.abs(deltaX)) {
+    // If we're on a scrollable element and moving more vertically than horizontally,
+    // let the native scroll handle it and don't move the carousel
+    if (scrollableElement && absDeltaY > absDeltaX) {
       setTouchStart(null);
       setTouchDelta(0);
       return;
