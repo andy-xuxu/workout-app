@@ -1877,7 +1877,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
                 {/* Content area - flashcard back */}
                 <div 
-                  className="p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-y-auto"
+                  className="p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-hidden"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     overscrollBehaviorY: 'contain'
@@ -1890,7 +1890,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               </span>
               <h3 className="text-lg md:text-2xl font-bold leading-tight mb-1.5 md:mb-2">{workout.name}</h3>
             </div>
-            <p className="text-gray-400 text-xs md:text-sm leading-relaxed line-clamp-2 mb-1.5 md:mb-2">{workout.description}</p>
+            <p className="text-gray-400 text-[10px] md:text-sm leading-relaxed line-clamp-1 md:line-clamp-2 mb-1.5 md:mb-2">{workout.description}</p>
             <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3">
               {workout.targetMuscles.map((m) => (
                 <span key={m} className="px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-800/60 text-gray-400 text-[9px] md:text-[10px] font-bold rounded-md">
@@ -1913,7 +1913,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll; min-h-0 + isolate so nested scroll works */}
                 <div 
                   data-scrollable-panel="true"
-                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1]"
+                  className="min-h-0 h-[180px] sm:h-[220px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1]"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     touchAction: 'pan-y',
@@ -2256,7 +2256,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
             const isAnimatingOut = animatingOutId === workout.id;
             
             return (
-              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center px-3 py-4 md:p-0 overflow-y-auto">
+              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center px-3 py-4 md:p-0 overflow-hidden">
                 <ExerciseCard
                   workout={workout}
                   index={idx}
@@ -3260,11 +3260,25 @@ const App: React.FC = () => {
         weight: last?.weight || '',
         reps: last?.reps || '',
       };
+      
+      const nextSets = [...current.sets, nextSet];
+      
+      // Scroll the panel to the bottom after adding a set
+      setTimeout(() => {
+        const panels = document.querySelectorAll('[data-scrollable-panel="true"]');
+        panels.forEach(panel => {
+          panel.scrollTo({
+            top: panel.scrollHeight,
+            behavior: 'smooth'
+          });
+        });
+      }, 50);
+
       return {
         ...prev,
         [workoutId]: {
           ...current,
-          sets: [...current.sets, nextSet],
+          sets: nextSets,
         },
       };
     });
