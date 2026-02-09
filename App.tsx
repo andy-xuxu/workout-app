@@ -1884,21 +1884,21 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-            <div>
+            <div className="flex-shrink-0">
               <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-1.5 md:mb-3`}>
                 {workout.tag}
               </span>
               <h3 className="text-lg md:text-2xl font-bold leading-tight mb-1.5 md:mb-2">{workout.name}</h3>
             </div>
-            <p className="text-gray-400 text-[10px] md:text-sm leading-relaxed line-clamp-1 md:line-clamp-2 mb-1.5 md:mb-2">{workout.description}</p>
-            <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3">
+            <p className="text-gray-400 text-[10px] md:text-sm leading-relaxed line-clamp-1 md:line-clamp-2 mb-1.5 md:mb-2 flex-shrink-0">{workout.description}</p>
+            <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3 flex-shrink-0">
               {workout.targetMuscles.map((m) => (
                 <span key={m} className="px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-800/60 text-gray-400 text-[9px] md:text-[10px] font-bold rounded-md">
                   {m}
                 </span>
               ))}
             </div>
-            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4 min-h-0 flex flex-col">
+            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4 min-h-0 flex-1 flex flex-col overflow-hidden">
               <div className="mb-4 flex-shrink-0">
                 <span className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-bold">
                   Track Sets
@@ -1906,17 +1906,18 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               </div>
 
               {/* Scrollable sets grid container */}
-              <div className="relative min-h-0 flex flex-col overflow-hidden">
+              <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
                 {/* Top fade gradient */}
                 <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
                 
-                {/* Scrollable area - explicit h for iOS scroll; min-h-0 so nested scroll works */}
+                {/* Scrollable area - flex-1 fills available space; touch-action enables native mobile scroll */}
                 <div 
                   data-scrollable-panel="true"
-                  className="min-h-0 h-[180px] sm:h-[220px] md:h-[300px] overflow-y-scroll overflow-x-hidden"
+                  className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     overscrollBehaviorY: 'contain',
+                    touchAction: 'pan-y',
                     position: 'relative',
                     zIndex: 1,
                   }}
@@ -1981,7 +1982,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               {/* Add Set button - outside scrollable area */}
               <button
                 onClick={onAddSet}
-                className="w-full mt-3 py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-3 py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 flex-shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

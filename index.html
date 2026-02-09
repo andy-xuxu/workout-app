@@ -72,6 +72,12 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* Ensure native touch scrolling on scrollable panels */
+        [data-scrollable-panel="true"] {
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            overscroll-behavior-y: contain;
+        }
         
     </style>
 </head>
