@@ -1907,11 +1907,15 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Top fade gradient */}
                 <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
                 
-                {/* Scrollable area */}
+                {/* Scrollable area - touch-action and overscroll for iOS scroll */}
                 <div 
                   data-scrollable-panel="true"
                   className="max-h-[200px] md:max-h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
+                  style={{ 
+                    WebkitOverflowScrolling: 'touch',
+                    touchAction: 'pan-y',
+                    overscrollBehaviorY: 'contain',
+                  }}
                 >
                   <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
                     <span className="text-center">SET</span>
@@ -2086,6 +2090,7 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState(0);
+  const [touchInScrollPanel, setTouchInScrollPanel] = useState(false);
   const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2134,6 +2139,9 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   }, [goPrev, goNext]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    const inScrollPanel = !!target.closest('[data-scrollable-panel="true"]');
+    setTouchInScrollPanel(inScrollPanel);
     setTouchStart({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
@@ -2143,33 +2151,37 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart === null) return;
-    
+    // If touch started inside the track sets scroll panel, never drive the carousel so iOS native scroll works
+    if (touchInScrollPanel) return;
+
     const deltaX = e.touches[0].clientX - touchStart.x;
     const deltaY = Math.abs(e.touches[0].clientY - touchStart.y);
-    
-    // Check if we're moving within a scrollable element (like the track sets panel)
+
     const target = e.target as HTMLElement;
     const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
-    
-    // If moving within a scrollable element and movement is primarily vertical (scrolling), don't handle swipe
-    // This prevents card movement when scrolling vertically, but allows horizontal swipes
+
     if (scrollableElement && deltaY > Math.abs(deltaX)) {
-      // Vertical scrolling detected - cancel swipe gesture
       setTouchStart(null);
       setTouchDelta(0);
       return;
     }
-    
-    // Allow horizontal swipes (for card navigation)
+
     setTouchDelta(deltaX);
   };
 
   const handleTouchEnd = () => {
     if (touchStart === null) return;
+    if (touchInScrollPanel) {
+      setTouchStart(null);
+      setTouchDelta(0);
+      setTouchInScrollPanel(false);
+      return;
+    }
     if (touchDelta < -SWIPE_THRESHOLD) goNext();
     else if (touchDelta > SWIPE_THRESHOLD) goPrev();
     setTouchStart(null);
     setTouchDelta(0);
+    setTouchInScrollPanel(false);
   };
 
   const progressPercent = total > 0 ? (completedCount / total) * 100 : 0;
