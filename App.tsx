@@ -1913,24 +1913,22 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {/* Scrollable area - stopPropagation so carousel never sees touches; explicit h for iOS scroll; min-h-0 + isolate so nested scroll works */}
                 <div 
                   data-scrollable-panel="true"
-                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1] isolate"
+                  className="min-h-0 h-[200px] md:h-[300px] overflow-y-auto overflow-x-hidden space-y-2 pr-1 overscroll-contain relative z-[1]"
                   style={{ 
                     WebkitOverflowScrolling: 'touch',
                     touchAction: 'pan-y',
                     overscrollBehaviorY: 'contain',
-                    isolation: 'isolate'
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
                   }}
                   onTouchMove={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchCancel={(e) => {
-                    e.stopPropagation();
+                    // Stop propagation for vertical movements to prevent carousel from twitching
+                    const touch = e.touches[0];
+                    if (touchStart) {
+                      const dx = Math.abs(touch.clientX - touchStart.x);
+                      const dy = Math.abs(touch.clientY - touchStart.y);
+                      if (dy > dx) {
+                        e.stopPropagation();
+                      }
+                    }
                   }}
                 >
                   <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
@@ -2167,13 +2165,29 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart === null) return;
-    // If touch started inside the track sets scroll panel, never drive the carousel so iOS native scroll works
-    if (touchInScrollPanel) return;
-
+    
     const deltaX = e.touches[0].clientX - touchStart.x;
     const deltaY = e.touches[0].clientY - touchStart.y;
     const absDeltaX = Math.abs(deltaX);
     const absDeltaY = Math.abs(deltaY);
+
+    // If touch started inside the track sets scroll panel
+    if (touchInScrollPanel) {
+      // If we are moving more vertically than horizontally, 
+      // strictly disable carousel movement to allow nested scroll
+      if (absDeltaY > absDeltaX) {
+        setTouchDelta(0);
+        return;
+      }
+      
+      // If we are swiping horizontally, allow the carousel to move
+      if (absDeltaX > SWIPE_THRESHOLD / 2) {
+        setTouchDelta(deltaX);
+      } else {
+        setTouchDelta(0);
+      }
+      return;
+    }
 
     const target = e.target as HTMLElement;
     const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
@@ -2181,7 +2195,6 @@ const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
     // If we're on a scrollable element and moving more vertically than horizontally,
     // let the native scroll handle it and don't move the carousel
     if (scrollableElement && absDeltaY > absDeltaX) {
-      setTouchStart(null);
       setTouchDelta(0);
       return;
     }
