@@ -87,7 +87,7 @@ const formatDate = (timestamp: number): string => {
 
 const createDefaultTrackingState = (): ExerciseTrackingState => {
   const defaultSets: SetInput[] = [];
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 1; i += 1) {
     defaultSets.push({
       id: `default-set-${Date.now()}-${i}-${Math.random()}`,
       weight: '',
@@ -1740,19 +1740,52 @@ const ProgressPage: React.FC<ProgressPageProps> = ({
   );
 };
 
-// Exercise Card for Workout Carousel - Flashcard style
+// GIF Modal for exercise form
+interface GifModalProps {
+  workout: Workout;
+  onClose: () => void;
+}
+
+const GifModal: React.FC<GifModalProps> = ({ workout, onClose }) => (
+  <div
+    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+    onClick={onClose}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => e.key === 'Escape' && onClose()}
+    aria-label="Close"
+  >
+    <div className="max-w-full max-h-[85vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+      {workout.gifUrl ? (
+        <img
+          src={workout.gifUrl}
+          alt={workout.name}
+          className="max-w-full max-h-[75vh] object-contain rounded-lg"
+        />
+      ) : (
+        <EmptyGifPlaceholder size="large" />
+      )}
+      <p className="text-white/80 text-sm mt-4 font-medium">{workout.name}</p>
+      <button
+        onClick={onClose}
+        className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+);
+
+// Exercise Card for Vertical List - Accordion style
 interface ExerciseCardProps {
   workout: Workout;
-  index: number;
-  total: number;
   isCompleted: boolean;
-  isCurrentCard: boolean;
   isJustCompleted: boolean;
-  isAnimatingOut: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
   onMarkComplete: () => void;
+  onViewForm: () => void;
   trackingState: ExerciseTrackingState;
-  onUpdateQuick: (field: 'quickSets' | 'quickReps' | 'quickWeight', value: string) => void;
-  onToggleMode: () => void;
   onAddSet: () => void;
   onUpdateSet: (setId: string, field: 'weight' | 'reps', value: string) => void;
   onRemoveSet: (setId: string) => void;
@@ -1761,306 +1794,193 @@ interface ExerciseCardProps {
 
 const ExerciseCard: React.FC<ExerciseCardProps> = ({
   workout,
-  index,
-  total,
   isCompleted,
-  isCurrentCard,
   isJustCompleted,
-  isAnimatingOut,
+  isExpanded,
+  onToggleExpand,
   onMarkComplete,
+  onViewForm,
   trackingState,
-  onUpdateQuick,
-  onToggleMode,
   onAddSet,
   onUpdateSet,
   onRemoveSet,
   getCategoryStyles,
 }) => {
   const styles = getCategoryStyles(workout.category);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const isCollapsed = isCompleted && !isExpanded;
 
-  const handleFlip = (e: React.MouseEvent) => {
-    // Prevent flipping when clicking on interactive elements
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'BUTTON' ||
-      target.closest('button') ||
-      target.closest('input')
-    ) {
-      return;
-    }
-    setIsFlipped(!isFlipped);
-  };
+  if (isCollapsed) {
+    return (
+      <div
+        data-exercise-id={workout.id}
+        className={`w-full rounded-xl border overflow-hidden bg-[#151515] border-gray-800/80 cursor-pointer hover:border-gray-700 transition-colors ${
+          isJustCompleted ? 'ring-2 ring-green-500/30' : ''
+        }`}
+        onClick={onToggleExpand}
+      >
+        <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
+        <div className="px-4 py-3 flex items-center justify-between">
+          <span className="font-bold text-white truncate flex-1">{workout.name}</span>
+          <span className="flex items-center gap-2 text-green-500 text-sm font-medium shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Done
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full flex-shrink-0 flex items-center justify-center p-0 md:p-6" style={{ perspective: '1000px', maxHeight: '100%', minHeight: 0 }}>
-      <div
-        className={`relative w-full max-w-md rounded-[1.5rem] md:rounded-[1.75rem] shadow-2xl transition-all duration-500 ease-in ${
-          isJustCompleted && isCurrentCard ? 'ring-2 ring-green-500/30' : ''
-        }`}
-        style={{
-          transform: isAnimatingOut
-            ? 'scale(0.6) rotateY(-20deg) translateZ(-300px) translateY(20px)'
-            : 'scale(1) rotateY(0deg) translateZ(0px) translateY(0px)',
-          opacity: isAnimatingOut ? 0 : 1,
-          transformStyle: 'preserve-3d',
-          filter: isAnimatingOut ? 'blur(4px)' : 'blur(0px)',
-          zIndex: isAnimatingOut ? 0 : 1,
-        }}
-      >
-        <div
-          className="relative w-full h-full"
-          style={{
-            transformStyle: 'preserve-3d',
-            transition: 'transform 0.6s',
-            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          }}
-        >
-          {/* Front of card - Exercise details */}
-          <div
-            className="w-full h-full relative"
-            style={{
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transform: 'translateZ(0)',
-            }}
-          >
-            <div
-              className={`w-full h-full rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border flex flex-col relative ${
-                isJustCompleted && isCurrentCard ? 'border-green-500/40' : 'border-gray-800/80'
-              }`}
-            >
-              {/* Category accent bar */}
-              <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
+    <div
+      data-exercise-id={workout.id}
+      className={`relative w-full rounded-xl overflow-hidden bg-[#151515] border flex flex-col transition-all duration-300 ${
+        isJustCompleted ? 'ring-2 ring-green-500/30 border-green-500/40' : 'border-gray-800/80'
+      }`}
+    >
+      <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
 
-              {isJustCompleted && isCurrentCard && (
-                <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center backdrop-blur-[2px] transition-opacity duration-300 z-50 rounded-[1.5rem] md:rounded-[1.75rem]">
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-green-500 flex items-center justify-center shadow-2xl shadow-green-500/50 animate-pulse">
-                    <svg className="w-12 h-12 md:w-14 md:h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative" onClick={handleFlip}>
-                {/* Tap to view bar */}
-                <div className="flex-shrink-0 cursor-pointer">
-                  <div className="w-full relative overflow-hidden h-11">
-                    {/* Animated gradient background */}
-                    <div className={`absolute inset-0 bg-gradient-to-r ${styles.gradient} opacity-20`}></div>
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
-                    {/* Shimmer effect */}
-                    <div className="absolute inset-0 overflow-hidden">
-                      <div 
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                        style={{ animation: 'shimmer 2s infinite linear' }}
-                      ></div>
-                    </div>
-                    
-                    {/* "Tap to view" label */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        <span className="text-white/90 text-xs font-semibold uppercase tracking-wider">Tap to view</span>
-                      </div>
-                    </div>
-                    
-                    {/* Bottom border accent */}
-                    <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${styles.gradient}`}></div>
-                  </div>
-                </div>
-
-                {/* Content area - flashcard back */}
-                <div 
-                  className="p-4 md:p-6 pb-6 md:pb-6 flex flex-col gap-2 md:gap-5 flex-1 min-h-0 overflow-hidden"
-                  style={{ 
-                    WebkitOverflowScrolling: 'touch',
-                    overscrollBehaviorY: 'contain'
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-            <div className="flex-shrink-0">
-              <span className={`inline-block px-2 py-0.5 md:px-2.5 md:py-1 ${styles.bg} text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider mb-1.5 md:mb-3`}>
-                {workout.tag}
-              </span>
-              <h3 className="text-lg md:text-2xl font-bold leading-tight mb-1.5 md:mb-2">{workout.name}</h3>
-            </div>
-            <p className="text-gray-400 text-[10px] md:text-sm leading-relaxed line-clamp-1 md:line-clamp-2 mb-1.5 md:mb-2 flex-shrink-0">{workout.description}</p>
-            <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3 flex-shrink-0">
-              {workout.targetMuscles.map((m) => (
-                <span key={m} className="px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-800/60 text-gray-400 text-[9px] md:text-[10px] font-bold rounded-md">
-                  {m}
-                </span>
-              ))}
-            </div>
-            <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4 min-h-0 flex-1 flex flex-col overflow-hidden">
-              <div className="mb-4 flex-shrink-0">
-                <span className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-bold">
-                  Track Sets
-                </span>
-              </div>
-
-              {/* Scrollable sets grid container */}
-              <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
-                {/* Top fade gradient */}
-                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-t-lg"></div>
-                
-                {/* Scrollable area - flex-1 fills available space; touch-action enables native mobile scroll */}
-                <div 
-                  data-scrollable-panel="true"
-                  className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
-                  style={{ 
-                    WebkitOverflowScrolling: 'touch',
-                    overscrollBehaviorY: 'contain',
-                    touchAction: 'pan-y',
-                    position: 'relative',
-                    zIndex: 1,
-                  }}
-                >
-                  <div className="space-y-2 pr-1 pb-4">
-                  <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] md:text-[10px] text-gray-500 uppercase font-bold px-2 pb-1 sticky top-0 bg-[#0f0f0f] z-0 pt-2">
-                    <span className="text-center">SET</span>
-                    <span className="text-center">LBS</span>
-                    <span className="text-center">REPS</span>
-                    <span></span>
-                  </div>
-                  {trackingState.sets.map((set, idx) => {
-                    const isEmptyWeight = set.weight === '';
-                    const isEmptyReps = set.reps === '';
-                    return (
-                      <div
-                        key={set.id}
-                        className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-[#121212] border border-gray-800 rounded-lg px-2 py-2"
-                      >
-                        <span className="text-sm md:text-base text-white font-bold text-center">{idx + 1}</span>
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="decimal"
-                          value={set.weight}
-                          onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
-                          className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
-                            isEmptyWeight ? 'text-gray-500' : 'text-white'
-                          }`}
-                          placeholder="0"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={set.reps}
-                          onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
-                          className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs md:text-sm focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
-                            isEmptyReps ? 'text-gray-500' : 'text-white'
-                          }`}
-                          placeholder="0"
-                        />
-                        <button
-                          onClick={() => onRemoveSet(set.id)}
-                          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
-                          aria-label="Remove set"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })}
-                  </div>
-                </div>
-                
-                {/* Bottom fade gradient */}
-                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none z-10 rounded-b-lg"></div>
-              </div>
-
-              {/* Add Set button - outside scrollable area */}
-              <button
-                onClick={onAddSet}
-                className="w-full mt-3 py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 flex-shrink-0"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Set
-              </button>
-            </div>
-                  <button
-                    onClick={onMarkComplete}
-                    className={`mt-4 md:mt-6 w-full py-3 md:py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 active:scale-[0.98] flex-shrink-0 ${
-                      isJustCompleted
-                        ? 'bg-green-600 text-white cursor-default'
-                        : isCompleted
-                        ? 'bg-gray-500/50 text-gray-300 cursor-default'
-                        : 'bg-white text-black hover:bg-gray-100 shadow-lg'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Done
-                      </span>
-                    ) : (
-                      'Mark Complete'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Back of card - GIF view */}
-          <div
-            className="absolute inset-0 w-full"
-            style={{
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)',
-            }}
-          >
-            <div
-              className={`w-full h-full rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden bg-[#151515] border flex flex-col ${
-                isJustCompleted && isCurrentCard ? 'border-green-500/40' : 'border-gray-800/80'
-              }`}
-              onClick={handleFlip}
-            >
-              {/* Category accent bar */}
-              <div className={`h-1 w-full bg-gradient-to-r ${styles.gradient} flex-shrink-0`} />
-
-              {/* GIF display */}
-              <div className="flex-1 flex flex-col items-center justify-center p-4 bg-black/80 relative cursor-pointer">
-                {workout.gifUrl ? (
-                  <img
-                    src={workout.gifUrl}
-                    alt={workout.name}
-                    className="max-w-full max-h-full object-contain rounded-lg"
-                    loading="lazy"
-                  />
-                ) : (
-                  <EmptyGifPlaceholder size="large" />
-                )}
-                
-                {/* Tap to close hint */}
-                <div className="absolute bottom-6 left-0 right-0 text-center">
-                  <span className="text-white/50 text-xs uppercase tracking-wider">tap anywhere to close</span>
-                </div>
-              </div>
-            </div>
+      {isJustCompleted && (
+        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center pointer-events-none z-10 rounded-xl">
+          <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/50 animate-pulse">
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
           </div>
         </div>
+      )}
+
+      <div className="p-4 flex flex-col gap-3 relative">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <span className={`inline-block px-2 py-0.5 ${styles.bg} text-[9px] font-black rounded-lg uppercase tracking-wider mb-1.5`}>
+              {workout.tag}
+            </span>
+            <h3 className="text-lg font-bold leading-tight">{workout.name}</h3>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onViewForm(); }}
+            className="shrink-0 px-3 py-1.5 bg-gray-800/70 hover:bg-gray-700/70 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+            aria-label="View exercise form"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            View form
+          </button>
+        </div>
+
+        <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{workout.description}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {workout.targetMuscles.map((m) => (
+            <span key={m} className="px-2 py-0.5 bg-gray-800/60 text-gray-400 text-[9px] font-bold rounded-md">
+              {m}
+            </span>
+          ))}
+        </div>
+
+        <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-xl p-4">
+          <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Track Sets</span>
+          <div className="space-y-2">
+            <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 text-[9px] text-gray-500 uppercase font-bold px-2 pb-1">
+              <span className="text-center">SET</span>
+              <span className="text-center">LBS</span>
+              <span className="text-center">REPS</span>
+              <span />
+            </div>
+            {trackingState.sets.map((set, idx) => {
+              const isEmptyWeight = set.weight === '';
+              const isEmptyReps = set.reps === '';
+              return (
+                <div
+                  key={set.id}
+                  className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-[#121212] border border-gray-800 rounded-lg px-2 py-2"
+                >
+                  <span className="text-sm text-white font-bold text-center">{idx + 1}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="decimal"
+                    value={set.weight}
+                    onChange={(e) => onUpdateSet(set.id, 'weight', e.target.value)}
+                    className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
+                      isEmptyWeight ? 'text-gray-500' : 'text-white'
+                    }`}
+                    placeholder="0"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={set.reps}
+                    onChange={(e) => onUpdateSet(set.id, 'reps', e.target.value)}
+                    className={`w-full px-2 py-2 bg-[#151515] border border-gray-800 rounded-md text-xs focus:outline-none focus:border-gray-600 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance]:textfield placeholder:text-gray-500 focus:placeholder:opacity-0 ${
+                      isEmptyReps ? 'text-gray-500' : 'text-white'
+                    }`}
+                    placeholder="0"
+                  />
+                  <button
+                    onClick={() => onRemoveSet(set.id)}
+                    className="p-1.5 text-gray-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
+                    aria-label="Remove set"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={onAddSet}
+            className="w-full mt-3 py-2.5 bg-gray-800/70 hover:bg-gray-700/70 text-gray-100 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Set
+          </button>
+        </div>
+
+        {isCompleted && (
+          <button
+            onClick={onToggleExpand}
+            className="text-xs text-gray-500 hover:text-gray-400 mb-2"
+          >
+            Collapse
+          </button>
+        )}
+
+        <button
+          onClick={onMarkComplete}
+          className={`w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
+            isJustCompleted
+              ? 'bg-green-600 text-white cursor-default'
+              : isCompleted
+              ? 'bg-gray-500/50 text-gray-300 cursor-default'
+              : 'bg-white text-black hover:bg-gray-100 shadow-lg'
+          }`}
+        >
+          {isCompleted ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Done
+            </span>
+          ) : (
+            'Mark Complete'
+          )}
+        </button>
       </div>
     </div>
   );
 };
 
-// Workout Carousel Component
+// Workout List (Vertical) Component
 interface WorkoutCarouselProps {
   workoutName: string;
   workouts: Workout[];
@@ -2077,272 +1997,130 @@ interface WorkoutCarouselProps {
   isMobile: boolean;
 }
 
-const SWIPE_THRESHOLD = 50;
-
 const WorkoutCarousel: React.FC<WorkoutCarouselProps> = ({
   workoutName,
   workouts,
   completedExercises,
   trackingByExercise,
-  onUpdateQuick,
-  onToggleMode,
   onAddSet,
   onUpdateSet,
   onRemoveSet,
   onMarkComplete,
   onBack,
   getCategoryStyles,
-  isMobile,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [touchInScrollPanel, setTouchInScrollPanel] = useState(false);
-  const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
+  const [expandedExerciseIds, setExpandedExerciseIds] = useState<Set<string>>(new Set());
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set());
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [gifModalWorkout, setGifModalWorkout] = useState<Workout | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const total = workouts.length;
   const completedCount = completedExercises.size;
-  const allComplete = total > 0 && completedCount === total;
-
-  const goNext = useCallback(() => {
-    if (currentIndex < total - 1) {
-      // Clear just completed state when navigating away
-      const currentWorkoutId = workouts[currentIndex]?.id;
-      if (currentWorkoutId) {
-        setJustCompletedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(currentWorkoutId);
-          return next;
-        });
-      }
-      setCurrentIndex((i) => i + 1);
-    }
-  }, [currentIndex, total, workouts]);
-
-  const goPrev = useCallback(() => {
-    if (currentIndex > 0) {
-      // Clear just completed state when navigating away
-      const currentWorkoutId = workouts[currentIndex]?.id;
-      if (currentWorkoutId) {
-        setJustCompletedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(currentWorkoutId);
-          return next;
-        });
-      }
-      setCurrentIndex((i) => i - 1);
-    }
-  }, [currentIndex, workouts]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') goPrev();
-      else if (e.key === 'ArrowRight') goNext();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goPrev, goNext]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    const inScrollPanel = !!target.closest('[data-scrollable-panel="true"]');
-    setTouchInScrollPanel(inScrollPanel);
-    setTouchStart({
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-    });
-    setTouchDelta(0);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStart === null) return;
-    
-    // If touch started inside the track sets scroll panel, completely ignore for carousel
-    // This allows iOS native scrolling to work without interference
-    if (touchInScrollPanel) {
-      return;
-    }
-    
-    const deltaX = e.touches[0].clientX - touchStart.x;
-    const deltaY = e.touches[0].clientY - touchStart.y;
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-
-    const target = e.target as HTMLElement;
-    const scrollableElement = target.closest('[data-scrollable-panel="true"], [class*="overflow-y-auto"], [class*="overflow-y-scroll"]');
-
-    // If we're on a scrollable element and moving more vertically than horizontally,
-    // let the native scroll handle it and don't move the carousel
-    if (scrollableElement && absDeltaY > absDeltaX) {
-      return;
-    }
-
-    setTouchDelta(deltaX);
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStart === null) return;
-    if (touchInScrollPanel) {
-      setTouchStart(null);
-      setTouchDelta(0);
-      setTouchInScrollPanel(false);
-      return;
-    }
-    if (touchDelta < -SWIPE_THRESHOLD) goNext();
-    else if (touchDelta > SWIPE_THRESHOLD) goPrev();
-    setTouchStart(null);
-    setTouchDelta(0);
-    setTouchInScrollPanel(false);
-  };
-
   const progressPercent = total > 0 ? (completedCount / total) * 100 : 0;
+
+  const isExpanded = useCallback((workoutId: string) => {
+    const isCompleted = completedExercises.has(workoutId);
+    return !isCompleted || expandedExerciseIds.has(workoutId);
+  }, [completedExercises, expandedExerciseIds]);
+
+  const toggleExpand = useCallback((workoutId: string) => {
+    setExpandedExerciseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(workoutId)) {
+        next.delete(workoutId);
+      } else {
+        next.add(workoutId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleMarkComplete = useCallback((workout: Workout, idx: number) => {
+    const isAlreadyCompleted = completedExercises.has(workout.id);
+    const isLastExercise = idx === total - 1;
+
+    onMarkComplete(workout.id, isLastExercise);
+
+    if (!isAlreadyCompleted) {
+      setJustCompletedIds((prev) => new Set(prev).add(workout.id));
+      setExpandedExerciseIds((prev) => new Set(prev).add(workout.id));
+    }
+
+    setTimeout(() => {
+      setJustCompletedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(workout.id);
+        return next;
+      });
+      setExpandedExerciseIds((prev) => {
+        const next = new Set(prev);
+        next.delete(workout.id);
+        return next;
+      });
+    }, 400);
+  }, [completedExercises, total, onMarkComplete]);
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-[#0c0c0c] to-[#0a0a0a] text-white selection:bg-blue-500/30">
-      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
-        >
-          <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="font-bold uppercase tracking-wider text-sm">Back</span>
-        </button>
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          <h1 className="text-base font-bold truncate w-full text-center max-w-[200px] md:max-w-sm">{workoutName}</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {completedCount} of {total} complete
-          </p>
-        </div>
-        <div className="w-16" />
-      </header>
-
-      <div className="flex-1 min-h-0 relative overflow-hidden flex items-center" style={{ perspective: '1000px' }}>
-        <div
-          ref={containerRef}
-          className="h-full w-full flex transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateX(calc(-${currentIndex * 100}% + ${touchDelta}px))`,
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {workouts.map((workout, idx) => {
-            const isCurrentCard = idx === currentIndex;
-            const isAnimatingOut = animatingOutId === workout.id;
-            
-            return (
-              <div key={workout.id} className="w-full flex-shrink-0 h-full flex items-start md:items-center justify-center px-3 py-4 md:p-0 overflow-hidden">
-                <ExerciseCard
-                  workout={workout}
-                  index={idx}
-                  total={total}
-                  isCompleted={completedExercises.has(workout.id)}
-                  isCurrentCard={isCurrentCard}
-                  isAnimatingOut={isAnimatingOut}
-                  trackingState={trackingByExercise[workout.id] || createDefaultTrackingState()}
-                  onUpdateQuick={(field, value) => onUpdateQuick(workout.id, field, value)}
-                  onToggleMode={() => onToggleMode(workout.id)}
-                  onAddSet={() => onAddSet(workout.id)}
-                  onUpdateSet={(setId, field, value) => onUpdateSet(workout.id, setId, field, value)}
-                  onRemoveSet={(setId) => onRemoveSet(workout.id, setId)}
-                  onMarkComplete={() => {
-                    if (isCurrentCard && !isAnimatingOut) {
-                      const isAlreadyCompleted = completedExercises.has(workout.id);
-                      const isLastExercise = currentIndex === total - 1;
-                      
-                      // Always call onMarkComplete to update the log with current data
-                      // Pass isLastExercise flag so summary only triggers on last tile
-                      onMarkComplete(workout.id, isLastExercise);
-                      
-                      // If it's the last exercise, skip animation and go straight to summary
-                      if (isLastExercise) {
-                        // Summary will be triggered by handleCompleteExercise
-                        // No card flip animation needed
-                        return;
-                      }
-                      
-                      // For non-final tiles: do card flip animation
-                      setAnimatingOutId(workout.id);
-                      
-                      // Only add to justCompletedIds if not already completed (to show green animation)
-                      // If already completed (editing), just do the flip without green checkmark
-                      if (!isAlreadyCompleted) {
-                        setJustCompletedIds((prev) => new Set(prev).add(workout.id));
-                      }
-                      
-                      // Card flip animation for non-final tiles
-                      setTimeout(() => {
-                        setAnimatingOutId(null);
-                        goNext();
-                      }, 500);
-                    }
-                  }}
-                  isJustCompleted={justCompletedIds.has(workout.id)}
-                  getCategoryStyles={getCategoryStyles}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex-shrink-0 p-3 pb-4 md:p-4 md:pb-6">
-        {/* Flashcard dots */}
-        <div className="flex justify-center gap-1.5 mb-4">
-          {Array.from({ length: total }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                // Clear just completed state when navigating away
-                const currentWorkoutId = workouts[currentIndex]?.id;
-                if (currentWorkoutId) {
-                  setJustCompletedIds((prev) => {
-                    const next = new Set(prev);
-                    next.delete(currentWorkoutId);
-                    return next;
-                  });
-                }
-                setCurrentIndex(i);
-              }}
-              className={`rounded-full transition-all duration-200 ${
-                i === currentIndex
-                  ? 'w-6 h-2 bg-white'
-                  : 'w-2 h-2' +
-                    (completedExercises.has(workouts[i].id) ? ' bg-green-500/70 hover:bg-green-500' : ' bg-gray-600 hover:bg-gray-500')
-              }`}
-              aria-label={`Go to exercise ${i + 1}`}
-            />
-          ))}
-        </div>
-        <div className="max-w-sm mx-auto flex items-center justify-between">
+      <header className="flex-shrink-0 flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3">
           <button
-            onClick={goPrev}
-            disabled={currentIndex === 0}
-            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-gray-800/50"
-            aria-label="Previous card"
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
+            <span className="font-bold uppercase tracking-wider text-sm">Back</span>
           </button>
-          <span className="text-xs text-gray-500">Tap to navigate</span>
-          <button
-            onClick={goNext}
-            disabled={currentIndex === total - 1}
-            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-gray-800/50"
-            aria-label="Next card"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div className="flex flex-col items-center flex-1 min-w-0">
+            <h1 className="text-base font-bold truncate w-full text-center max-w-[200px] md:max-w-sm">{workoutName}</h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {completedCount} of {total} complete
+            </p>
+          </div>
+          <div className="w-16" />
+        </div>
+        <div className="px-4 pb-2">
+          <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </header>
+
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}
+      >
+        <div className="p-4 space-y-4 pb-8">
+          {workouts.map((workout, idx) => (
+            <div key={workout.id}>
+              <ExerciseCard
+                workout={workout}
+                isCompleted={completedExercises.has(workout.id)}
+                isJustCompleted={justCompletedIds.has(workout.id)}
+                isExpanded={isExpanded(workout.id)}
+                onToggleExpand={() => toggleExpand(workout.id)}
+                onMarkComplete={() => handleMarkComplete(workout, idx)}
+                onViewForm={() => setGifModalWorkout(workout)}
+                trackingState={trackingByExercise[workout.id] || createDefaultTrackingState()}
+                onAddSet={() => onAddSet(workout.id)}
+                onUpdateSet={(setId, field, value) => onUpdateSet(workout.id, setId, field, value)}
+                onRemoveSet={(setId) => onRemoveSet(workout.id, setId)}
+                getCategoryStyles={getCategoryStyles}
+              />
+            </div>
+          ))}
         </div>
       </div>
+
+      {gifModalWorkout && (
+        <GifModal workout={gifModalWorkout} onClose={() => setGifModalWorkout(null)} />
+      )}
     </div>
   );
 };
@@ -2548,15 +2326,27 @@ const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onCl
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl relative">
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <div className="p-6 md:p-8">
+        <div className="flex items-center justify-between p-6 md:p-8 pb-0">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6 md:p-8 pt-4">
           <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">{log.workoutName}</h2>
             <p className="text-gray-500 text-sm">
