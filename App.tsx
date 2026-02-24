@@ -2322,31 +2322,28 @@ interface WorkoutLogDetailModalProps {
 
 const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onClose }) => {
   const totalVolume = calculateLogVolume(log);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [log.id]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl relative">
-        <div className="flex items-center justify-between p-6 md:p-8 pb-0">
-          <button
-            onClick={onClose}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-          </button>
-          <button
-            onClick={onClose}
-            className="p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6 md:p-8 pt-4">
+    <div
+      ref={scrollRef}
+      className="fixed inset-0 z-[70] flex items-start justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto"
+    >
+      <div className="bg-[#0d0d0d] border border-gray-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl relative my-8">
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 z-20 p-2 bg-black/60 hover:bg-gray-800 rounded-full transition-colors text-white border border-gray-800"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="p-6 md:p-8">
           <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">{log.workoutName}</h2>
             <p className="text-gray-500 text-sm">
