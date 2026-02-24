@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { WORKOUT_LIBRARY, CATEGORIES, PREDEFINED_WORKOUTS, type PredefinedWorkout } from './constants';
 import { Workout, Category, SavedWorkout, WorkoutLog, ExerciseLog, SetLog } from './types';
 import { storage } from './utils/storage';
-import { aggregateLogsByPeriod, formatChartData, pickSmartPeriod, AggregatedMetrics } from './utils/analytics';
+import { calculateExercisePBs, type ExercisePB } from './utils/analytics';
 
 type AppMode =
   | 'landing'
@@ -1560,35 +1560,36 @@ const TrainLandingPage: React.FC<TrainLandingPageProps> = ({
 // Progress Page Component
 interface ProgressPageProps {
   workoutLogs: WorkoutLog[];
-  historyViewMode: 'calendar' | 'last7days';
-  setHistoryViewMode: (mode: 'calendar' | 'last7days') => void;
-  selectedHistoryMetric: 'volume' | 'reps';
-  setSelectedHistoryMetric: (metric: 'volume' | 'reps') => void;
-  historyVolumeData: TimeSeriesPoint[];
-  historyRepsData: TimeSeriesPoint[];
-  historyPeriod: 'day' | 'week' | 'month';
+  progressTab: 'prs' | 'history';
+  setProgressTab: (tab: 'prs' | 'history') => void;
   calendarSelectedDate: Date | undefined;
   setCalendarSelectedDate: (date: Date | undefined) => void;
   selectedWorkoutLog: WorkoutLog | null;
   setSelectedWorkoutLog: (log: WorkoutLog | null) => void;
+  exercisePBs: ExercisePB[];
   onClearAllWorkoutLogs: () => void;
 }
 
 const ProgressPage: React.FC<ProgressPageProps> = ({
   workoutLogs,
-  historyViewMode,
-  setHistoryViewMode,
-  selectedHistoryMetric,
-  setSelectedHistoryMetric,
-  historyVolumeData,
-  historyRepsData,
-  historyPeriod,
+  progressTab,
+  setProgressTab,
   calendarSelectedDate,
   setCalendarSelectedDate,
   selectedWorkoutLog,
   setSelectedWorkoutLog,
+  exercisePBs,
   onClearAllWorkoutLogs,
 }) => {
+  const pbsWithData = exercisePBs.filter(
+    (pb) =>
+      pb.maxWeight ||
+      pb.maxReps ||
+      pb.maxVolume ||
+      pb.maxTotalVolume ||
+      pb.estimated1RM
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pb-24 selection:bg-blue-500/30">
       <div className="max-w-6xl mx-auto pt-8">
@@ -1610,103 +1611,169 @@ const ProgressPage: React.FC<ProgressPageProps> = ({
             </div>
           ) : (
             <>
-              {/* Navigation Tabs */}
-              <div className="flex gap-3 mb-6">
+              {/* PRs | History Tabs */}
+              <div className="flex gap-3 mb-4">
                 <button
-                  onClick={() => setHistoryViewMode('last7days')}
+                  onClick={() => setProgressTab('prs')}
                   className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
-                    historyViewMode === 'last7days'
+                    progressTab === 'prs'
                       ? 'bg-white text-black shadow-lg shadow-white/20'
                       : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
                   }`}
                 >
-                  Last 7 Days
+                  PRs
                 </button>
                 <button
-                  onClick={() => setHistoryViewMode('calendar')}
+                  onClick={() => setProgressTab('history')}
                   className={`flex-1 px-6 py-3 rounded-2xl font-bold text-sm transition-all duration-200 ${
-                    historyViewMode === 'calendar'
+                    progressTab === 'history'
                       ? 'bg-white text-black shadow-lg shadow-white/20'
                       : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
                   }`}
                 >
-                  Calendar
+                  History
                 </button>
               </div>
 
-              {/* Last 7 Days View */}
-              {historyViewMode === 'last7days' && (
-                <>
+              {progressTab === 'prs' && (
+                <div className="space-y-4">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-bold">Workout Trends</h2>
-                      <p className="text-sm text-gray-500">Last 7 days</p>
-                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold">Personal Records</h2>
                     <button
                       onClick={onClearAllWorkoutLogs}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white self-start md:self-auto"
                     >
                       Clear Data
                     </button>
                   </div>
-
-                  <div className="space-y-4">
-                    <TimeSeriesChart
-                      title={selectedHistoryMetric === 'volume' ? 'Volume' : 'Reps'}
-                      yAxisLabel={selectedHistoryMetric === 'volume' ? 'Total volume' : 'Total reps'}
-                      colorClassName="from-emerald-500 to-emerald-400"
-                      metric={selectedHistoryMetric}
-                      data={
-                        selectedHistoryMetric === 'volume'
-                          ? historyVolumeData
-                          : historyRepsData
-                      }
-                      onPointSelect={(date) => {
-                        setHistoryViewMode('calendar');
-                        setCalendarSelectedDate(date);
-                      }}
-                      width={800}
-                      height={400}
-                      period={historyPeriod}
-                    />
-                    
-                    <div className="flex gap-2 md:gap-3 justify-center flex-wrap">
-                      <button
-                        onClick={() => setSelectedHistoryMetric('volume')}
-                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                          selectedHistoryMetric === 'volume'
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                        }`}
-                      >
-                        Volume
-                      </button>
-                      <button
-                        onClick={() => setSelectedHistoryMetric('reps')}
-                        className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm transition-all duration-200 flex-1 md:flex-none min-w-[80px] md:min-w-0 ${
-                          selectedHistoryMetric === 'reps'
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-[#111111] border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
-                        }`}
-                      >
-                        Reps
-                      </button>
+                  {pbsWithData.length === 0 ? (
+                    <div className="text-center py-12 bg-[#111111] border border-gray-800 rounded-2xl">
+                      <p className="text-gray-400 mb-2">No personal records yet</p>
+                      <p className="text-gray-500 text-sm">Log weight and reps during workouts to track PRs.</p>
                     </div>
-                  </div>
-                </>
+                  ) : (
+                    <div className="space-y-3">
+                      {pbsWithData.map((pb) => {
+                        const getLog = (workoutId: string) => workoutLogs.find((l) => l.id === workoutId);
+                        const anyLog = getLog(
+                          pb.maxWeight?.workoutId ?? pb.estimated1RM?.workoutId ?? pb.maxReps?.workoutId ?? pb.maxVolume?.workoutId ?? pb.maxTotalVolume?.workoutId ?? ''
+                        );
+                        return (
+                          <div
+                            key={pb.exerciseId}
+                            className="bg-[#111111] border border-gray-800 rounded-2xl p-4"
+                          >
+                            <h3 className="text-lg font-bold mb-3">{pb.exerciseName}</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-sm">
+                              {pb.maxWeight && (
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase">Heaviest</p>
+                                  <p className="font-bold">
+                                    {Math.round(pb.maxWeight.value)} lbs
+                                    {getLog(pb.maxWeight.workoutId) && (
+                                      <button
+                                        onClick={() => setSelectedWorkoutLog(getLog(pb.maxWeight!.workoutId)!)}
+                                        className="ml-2 text-emerald-400 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
+                                    )}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">{pb.maxWeight.date.toLocaleDateString()}</p>
+                                </div>
+                              )}
+                              {pb.estimated1RM && (
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase">Est. 1RM</p>
+                                  <p className="font-bold">
+                                    {Math.round(pb.estimated1RM.value)} lbs
+                                    {getLog(pb.estimated1RM.workoutId) && (
+                                      <button
+                                        onClick={() => setSelectedWorkoutLog(getLog(pb.estimated1RM!.workoutId)!)}
+                                        className="ml-2 text-emerald-400 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
+                                    )}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">{pb.estimated1RM.date.toLocaleDateString()}</p>
+                                </div>
+                              )}
+                              {pb.maxReps && (
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase">Max Reps</p>
+                                  <p className="font-bold">
+                                    {pb.maxReps.value} reps
+                                    {getLog(pb.maxReps.workoutId) && (
+                                      <button
+                                        onClick={() => setSelectedWorkoutLog(getLog(pb.maxReps!.workoutId)!)}
+                                        className="ml-2 text-emerald-400 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
+                                    )}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">{pb.maxReps.date.toLocaleDateString()}</p>
+                                </div>
+                              )}
+                              {pb.maxVolume && (
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase">Best Set Vol</p>
+                                  <p className="font-bold">
+                                    {Math.round(pb.maxVolume.value)} lbs
+                                    {getLog(pb.maxVolume.workoutId) && (
+                                      <button
+                                        onClick={() => setSelectedWorkoutLog(getLog(pb.maxVolume!.workoutId)!)}
+                                        className="ml-2 text-emerald-400 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
+                                    )}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">{pb.maxVolume.date.toLocaleDateString()}</p>
+                                </div>
+                              )}
+                              {pb.maxTotalVolume && (
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase">Best Session Vol</p>
+                                  <p className="font-bold">
+                                    {Math.round(pb.maxTotalVolume.value)} lbs
+                                    {getLog(pb.maxTotalVolume.workoutId) && (
+                                      <button
+                                        onClick={() => setSelectedWorkoutLog(getLog(pb.maxTotalVolume!.workoutId)!)}
+                                        className="ml-2 text-emerald-400 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
+                                    )}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">{pb.maxTotalVolume.date.toLocaleDateString()}</p>
+                                </div>
+                              )}
+                            </div>
+                            {anyLog && (
+                              <button
+                                onClick={() => setSelectedWorkoutLog(anyLog)}
+                                className="mt-3 text-emerald-400 text-sm font-semibold hover:underline"
+                              >
+                                Open workout details
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Calendar View */}
-              {historyViewMode === 'calendar' && (
+              {progressTab === 'history' && (
                 <>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6">
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-bold">Calendar</h2>
-                      <p className="text-sm text-gray-500">View workouts by date</p>
-                    </div>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                    <h2 className="text-2xl md:text-3xl font-bold">History</h2>
                     <button
                       onClick={onClearAllWorkoutLogs}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-xs uppercase tracking-wider rounded-xl text-white self-start md:self-auto"
                     >
                       Clear Data
                     </button>
@@ -1717,9 +1784,7 @@ const ProgressPage: React.FC<ProgressPageProps> = ({
                       onClose={() => {}}
                       workoutLogs={workoutLogs}
                       selectedDate={calendarSelectedDate}
-                      onSelectLog={(log) => {
-                        setSelectedWorkoutLog(log);
-                      }}
+                      onSelectLog={(log) => setSelectedWorkoutLog(log)}
                       inline={true}
                     />
                   </div>
@@ -1733,6 +1798,7 @@ const ProgressPage: React.FC<ProgressPageProps> = ({
           <WorkoutLogDetailModal
             log={selectedWorkoutLog}
             onClose={() => setSelectedWorkoutLog(null)}
+            exercisePBs={exercisePBs}
           />
         )}
       </div>
@@ -2318,15 +2384,36 @@ const WorkoutCompletionCelebration: React.FC<WorkoutCompletionCelebrationProps> 
 interface WorkoutLogDetailModalProps {
   log: WorkoutLog;
   onClose: () => void;
+  exercisePBs?: ExercisePB[];
 }
 
-const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onClose }) => {
+const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onClose, exercisePBs }) => {
   const totalVolume = calculateLogVolume(log);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isSetPR = useCallback(
+    (exerciseId: string, weight: number | undefined, reps: number, volume: number) => {
+      if (!exercisePBs) return false;
+      const pb = exercisePBs.find((p) => p.exerciseId === exerciseId);
+      if (!pb) return false;
+      const isThisWorkout = (wId: string) => wId === log.id;
+      if (weight !== undefined && pb.maxWeight && weight >= pb.maxWeight.value && isThisWorkout(pb.maxWeight.workoutId))
+        return true;
+      if (pb.maxReps && reps >= pb.maxReps.value && isThisWorkout(pb.maxReps.workoutId)) return true;
+      if (pb.maxVolume && volume >= pb.maxVolume.value && isThisWorkout(pb.maxVolume.workoutId)) return true;
+      return false;
+    },
+    [exercisePBs, log.id]
+  );
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [log.id]);
+
+  const durationStr =
+    log.durationSeconds != null && log.durationSeconds > 0
+      ? `${Math.floor(log.durationSeconds / 60)}m ${log.durationSeconds % 60}s`
+      : null;
 
   return (
     <div
@@ -2352,6 +2439,7 @@ const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onCl
             <div className="flex flex-wrap gap-4 text-xs text-gray-500 mt-3">
               <span>{log.exercises.length} exercises</span>
               <span>{Math.round(totalVolume)} total volume</span>
+              {durationStr && <span>{durationStr}</span>}
             </div>
           </div>
           <div className="space-y-4">
@@ -2362,15 +2450,29 @@ const WorkoutLogDetailModal: React.FC<WorkoutLogDetailModalProps> = ({ log, onCl
                   <p className="text-gray-500 text-sm">No sets recorded.</p>
                 ) : (
                   <div className="space-y-2">
-                    {exercise.sets.map((set) => (
-                      <div key={`${exercise.exerciseId}-${set.setNumber}`} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Set {set.setNumber}</span>
-                        <span className="text-gray-200">
-                          {set.weight !== undefined ? `${set.weight} x ` : ''}
-                          {set.reps} reps
-                        </span>
-                      </div>
-                    ))}
+                    {exercise.sets.map((set) => {
+                      const vol = (set.weight ?? 0) * set.reps;
+                      const isPR = isSetPR(exercise.exerciseId, set.weight, set.reps, vol);
+                      return (
+                        <div
+                          key={`${exercise.exerciseId}-${set.setNumber}`}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-gray-400 flex items-center gap-2">
+                            Set {set.setNumber}
+                            {isPR && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                                PR
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-gray-200">
+                            {set.weight !== undefined ? `${set.weight} x ` : ''}
+                            {set.reps} reps
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -2679,8 +2781,7 @@ const App: React.FC = () => {
   const [isWorkoutSaved, setIsWorkoutSaved] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedHistoryMetric, setSelectedHistoryMetric] = useState<'volume' | 'reps'>('volume');
-  const [historyViewMode, setHistoryViewMode] = useState<'calendar' | 'last7days'>('last7days');
+  const [progressTab, setProgressTab] = useState<'prs' | 'history'>('prs');
 
   const isCreateMode = appMode === 'create';
   const isMobile = useIsMobile();
@@ -2733,39 +2834,7 @@ const App: React.FC = () => {
       : WORKOUT_LIBRARY.filter(w => w.category === selectedCategory);
   }, [isCreateMode, selectedTag, selectedCategory]);
 
-  const historyPeriod = useMemo(() => pickSmartPeriod(workoutLogs), [workoutLogs]);
-  const historyAggregated = useMemo(
-    () => {
-      const aggregated = aggregateLogsByPeriod(workoutLogs, historyPeriod);
-      // If period is 'day', always show last 7 days
-      if (historyPeriod === 'day') {
-        const now = new Date();
-        const last7Days: AggregatedMetrics[] = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-          const dateKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
-          const existing = aggregated.find(a => a.dateKey === dateKey);
-          if (existing) {
-            last7Days.push(existing);
-          } else {
-            last7Days.push({
-              dateKey,
-              date: d,
-              totalDurationSeconds: 0,
-              totalVolume: 0,
-              totalReps: 0,
-              workoutCount: 0,
-            });
-          }
-        }
-        return last7Days;
-      }
-      return aggregated;
-    },
-    [workoutLogs, historyPeriod]
-  );
-  const historyVolumeData = useMemo(() => formatChartData(historyAggregated, 'volume'), [historyAggregated]);
-  const historyRepsData = useMemo(() => formatChartData(historyAggregated, 'reps'), [historyAggregated]);
+  const exercisePBs = useMemo(() => calculateExercisePBs(workoutLogs), [workoutLogs]);
 
   // Get tile IDs for prominent tile detection
   const tileIds = useMemo(() => {
@@ -3619,17 +3688,13 @@ const App: React.FC = () => {
         {currentTab === 'progress' && (
           <ProgressPage
             workoutLogs={workoutLogs}
-            historyViewMode={historyViewMode}
-            setHistoryViewMode={setHistoryViewMode}
-            selectedHistoryMetric={selectedHistoryMetric}
-            setSelectedHistoryMetric={setSelectedHistoryMetric}
-            historyVolumeData={historyVolumeData}
-            historyRepsData={historyRepsData}
-            historyPeriod={historyPeriod}
+            progressTab={progressTab}
+            setProgressTab={setProgressTab}
             calendarSelectedDate={calendarSelectedDate}
             setCalendarSelectedDate={setCalendarSelectedDate}
             selectedWorkoutLog={selectedWorkoutLog}
             setSelectedWorkoutLog={setSelectedWorkoutLog}
+            exercisePBs={exercisePBs}
             onClearAllWorkoutLogs={handleClearAllWorkoutLogs}
           />
         )}

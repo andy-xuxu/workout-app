@@ -18,6 +18,7 @@ export type ExercisePB = {
   maxReps?: { value: number; date: Date; workoutId: string };
   maxVolume?: { value: number; date: Date; workoutId: string };
   maxTotalVolume?: { value: number; date: Date; workoutId: string };
+  estimated1RM?: { value: number; date: Date; workoutId: string };
 };
 
 const startOfDayKey = (timestamp: number): string => {
@@ -45,6 +46,36 @@ const getPeriodKey = (timestamp: number, period: Period): string => {
 };
 
 const parseDateKey = (key: string): Date => new Date(key);
+
+/** Epley formula: estimated 1RM from weight and reps */
+export const estimate1RM = (weight: number, reps: number): number => {
+  if (weight <= 0 || reps <= 0) return 0;
+  if (reps === 1) return weight;
+  return weight * (1 + reps / 30);
+};
+
+/** Consecutive days with at least one workout, counting backward from today */
+export const calculateStreak = (logs: WorkoutLog[]): number => {
+  const dayKeys = new Set<string>();
+  logs.forEach((log) => {
+    dayKeys.add(startOfDayKey(log.completedAt));
+  });
+
+  let streak = 0;
+  let d = new Date();
+  d.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < 365; i++) {
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+    if (dayKeys.has(key)) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+};
 
 export const calculateLogVolume = (log: WorkoutLog): number => {
   return log.exercises.reduce((total, exercise) => {
@@ -135,6 +166,12 @@ export const calculateExercisePBs = (logs: WorkoutLog[]): ExercisePB[] => {
         const volume = weight * set.reps;
         totalVolume += volume;
 
+        if (weight > 0 && set.reps > 0) {
+          const e1rm = estimate1RM(weight, set.reps);
+          if (!existing.estimated1RM || e1rm > existing.estimated1RM.value) {
+            existing.estimated1RM = { value: e1rm, date: new Date(log.completedAt), workoutId: log.id };
+          }
+        }
         if (!existing.maxWeight || weight > existing.maxWeight.value) {
           existing.maxWeight = { value: weight, date: new Date(log.completedAt), workoutId: log.id };
         }
